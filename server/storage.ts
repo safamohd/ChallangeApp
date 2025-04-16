@@ -194,6 +194,7 @@ export class DatabaseStorage implements IStorage {
         { name: "تسوق", icon: "shopping-bag", color: "#3b82f6" },
         { name: "مواصلات", icon: "car", color: "#f59e0b" },
         { name: "ترفيه", icon: "film", color: "#ef4444" },
+        { name: "أساسيات", icon: "home", color: "#06b6d4" },
         { name: "أخرى", icon: "ellipsis-h", color: "#8b5cf6" }
       ];
       

@@ -18,6 +18,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Add new category
+  apiRouter.post("/categories", async (req: Request, res: Response) => {
+    try {
+      const newCategory = await storage.createCategory(req.body);
+      res.status(201).json(newCategory);
+    } catch (error) {
+      console.error("Error adding category:", error);
+      res.status(500).json({ message: "فشل في إضافة الفئة" });
+    }
+  });
+  
   // Expenses API
   apiRouter.get("/expenses", async (req: Request, res: Response) => {
     try {
