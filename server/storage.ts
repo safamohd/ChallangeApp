@@ -5,7 +5,6 @@ import {
   savingsGoals, type SavingsGoal, type InsertSavingsGoal,
   subGoals, type SubGoal, type InsertSubGoal
 } from "@shared/schema";
-
 // modify the interface with any CRUD methods
 // you might need
 
@@ -41,7 +40,7 @@ export interface IStorage {
 }
 
 import { db } from "./db";
-import { asc, desc, eq, and, sql } from "drizzle-orm";
+import { desc, eq, and, sql } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   
@@ -81,7 +80,7 @@ export class DatabaseStorage implements IStorage {
     return db.select()
       .from(expenses)
       .where(eq(expenses.userId, userId))
-      .orderBy(desc(expenses.date));
+      .orderBy(desc(expenses.date), desc(expenses.id)); // Sort by date and id descending (newest first)
   }
   
   async getExpensesByMonth(userId: number, month: number, year: number): Promise<Expense[]> {
@@ -96,7 +95,7 @@ export class DatabaseStorage implements IStorage {
           sql`${expenses.date} >= ${startDate} AND ${expenses.date} <= ${endDate}`
         )
       )
-      .orderBy(desc(expenses.date));
+      .orderBy(desc(expenses.date), desc(expenses.id)); // Sort by date and id descending
   }
   
   async getExpenseById(id: number): Promise<Expense | undefined> {
