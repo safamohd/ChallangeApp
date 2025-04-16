@@ -13,6 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
 
+// Define the Category interface
+interface Category {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+}
+
 // Create a schema for the expense form
 const expenseFormSchema = z.object({
   title: z.string().min(2, { message: "يجب أن يحتوي العنوان على حرفين على الأقل" }),
@@ -32,7 +40,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
   const { toast } = useToast();
   
   // Fetch categories for dropdown
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
   
@@ -44,8 +52,8 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       title: "",
-      amount: undefined,
-      categoryId: undefined,
+      amount: 0, // Use 0 instead of undefined
+      categoryId: 0, // Use 0 instead of undefined
       date: today,
       notes: "",
     },
@@ -64,7 +72,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
       // Reset form after successful submission
       form.reset({
         title: "",
-        amount: undefined,
+        amount: 0, // Use 0 instead of undefined
         categoryId: data.categoryId, // Keep the same category selected
         date: today,
         notes: "",
@@ -73,7 +81,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
       // Show success message
       toast({
         title: "تم إضافة المصروف بنجاح",
-        variant: "success",
+        variant: "default",
       });
       
       // Invalidate queries to refresh the data
@@ -152,7 +160,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories?.map((category: any) => (
+                      {Array.isArray(categories) && categories.map((category) => (
                         <SelectItem key={category.id} value={category.id.toString()}>
                           <div className="flex items-center">
                             <i className={`fas fa-${category.icon} mr-2`} style={{ color: category.color }}></i>
