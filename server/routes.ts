@@ -34,8 +34,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expenses = await storage.getExpenses(userId);
       }
       
+      // Log expenses for debugging
+      console.log("Fetched expenses:", expenses.length);
+      
       res.json(expenses);
     } catch (error) {
+      console.error("Error fetching expenses:", error);
       res.status(500).json({ message: "فشل في جلب المصاريف" });
     }
   });
@@ -130,6 +134,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expenses = await storage.getExpensesByMonth(userId, month, year);
       const categories = await storage.getCategories();
       
+      // Log expenses for debugging
+      console.log("Fetched expenses for summary:", expenses.length);
+      
       // Calculate the total amount of expenses
       const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
       
@@ -164,6 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         categorySummary
       });
     } catch (error) {
+      console.error("Error fetching expense summary:", error);
       res.status(500).json({ message: "فشل في جلب ملخص المصاريف" });
     }
   });
