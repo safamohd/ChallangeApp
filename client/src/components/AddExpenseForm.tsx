@@ -61,18 +61,33 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
   
   const onSubmit = async (data: ExpenseFormValues) => {
     try {
+      // Make sure categoryId is a number and not 0 (for initial/default value)
+      if (!data.categoryId || data.categoryId === 0) {
+        toast({
+          title: "خطأ في الفئة",
+          description: "الرجاء اختيار فئة للمصروف",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Convert date string to Date object for the API
       const formattedData = {
         ...data,
+        categoryId: Number(data.categoryId), // Ensure categoryId is a number
+        amount: Number(data.amount), // Ensure amount is a number
         date: new Date(data.date),
       };
       
-      await apiRequest('POST', '/api/expenses', formattedData);
+      console.log("Sending expense data:", formattedData);
+      
+      const response = await apiRequest('POST', '/api/expenses', formattedData);
+      console.log("API response:", response);
       
       // Reset form after successful submission
       form.reset({
         title: "",
-        amount: 0, // Use 0 instead of undefined
+        amount: 0,
         categoryId: data.categoryId, // Keep the same category selected
         date: today,
         notes: "",
@@ -93,6 +108,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
         onSuccess();
       }
     } catch (error) {
+      console.error("Error adding expense:", error);
       toast({
         title: "حدث خطأ",
         description: "لم نتمكن من إضافة المصروف. الرجاء المحاولة مرة أخرى.",

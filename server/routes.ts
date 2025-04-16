@@ -47,15 +47,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add userId to the request body
       const expenseData = { ...req.body, userId };
       
+      // Log the request body for debugging
+      console.log("Expense data received:", JSON.stringify(expenseData));
+      
       // Validate the request body
       const validatedData = insertExpenseSchema.parse(expenseData);
+      
+      // Log the validated data
+      console.log("Validated expense data:", JSON.stringify(validatedData));
       
       const newExpense = await storage.createExpense(validatedData);
       res.status(201).json(newExpense);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation error:", JSON.stringify(error.errors));
         res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
       } else {
+        console.error("Server error:", error);
         res.status(500).json({ message: "فشل في إضافة المصروف" });
       }
     }
