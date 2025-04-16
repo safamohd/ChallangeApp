@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, timestamp, real } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,6 +18,12 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// User relations
+export const usersRelations = relations(users, ({ many }) => ({
+  expenses: many(expenses),
+  savingsGoals: many(savingsGoals),
+}));
+
 // Expense Categories
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -33,6 +40,11 @@ export const insertCategorySchema = createInsertSchema(categories).pick({
 
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Category = typeof categories.$inferSelect;
+
+// Category relations
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  expenses: many(expenses),
+}));
 
 // Expenses
 export const expenses = pgTable("expenses", {
@@ -57,6 +69,18 @@ export const insertExpenseSchema = createInsertSchema(expenses).pick({
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
 
+// Expense relations
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  user: one(users, {
+    fields: [expenses.userId],
+    references: [users.id],
+  }),
+  category: one(categories, {
+    fields: [expenses.categoryId], 
+    references: [categories.id],
+  }),
+}));
+
 // Savings Goals
 export const savingsGoals = pgTable("savings_goals", {
   id: serial("id").primaryKey(),
@@ -78,6 +102,15 @@ export const insertSavingsGoalSchema = createInsertSchema(savingsGoals).pick({
 export type InsertSavingsGoal = z.infer<typeof insertSavingsGoalSchema>;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
 
+// Savings Goal relations
+export const savingsGoalsRelations = relations(savingsGoals, ({ one, many }) => ({
+  user: one(users, {
+    fields: [savingsGoals.userId],
+    references: [users.id],
+  }),
+  subGoals: many(subGoals),
+}));
+
 // Sub-goals or challenges
 export const subGoals = pgTable("sub_goals", {
   id: serial("id").primaryKey(),
@@ -96,3 +129,11 @@ export const insertSubGoalSchema = createInsertSchema(subGoals).pick({
 
 export type InsertSubGoal = z.infer<typeof insertSubGoalSchema>;
 export type SubGoal = typeof subGoals.$inferSelect;
+
+// Sub-goals relations
+export const subGoalsRelations = relations(subGoals, ({ one }) => ({
+  savingsGoal: one(savingsGoals, {
+    fields: [subGoals.goalId],
+    references: [savingsGoals.id],
+  }),
+}));
