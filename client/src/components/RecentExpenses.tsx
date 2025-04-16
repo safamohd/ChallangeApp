@@ -5,6 +5,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
+interface Category {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+}
+
 interface Expense {
   id: number;
   title: string;
@@ -21,13 +28,13 @@ interface RecentExpensesProps {
 
 export default function RecentExpenses({ expenses, isLoading }: RecentExpensesProps) {
   // Fetch categories for icon and color mapping
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
   
   // Get category icon and color from categoryId
   const getCategoryDetails = (categoryId: number) => {
-    const category = categories?.find((cat: any) => cat.id === categoryId);
+    const category = categories.find((cat) => cat.id === categoryId);
     return {
       icon: category?.icon || 'question',
       color: category?.color || '#cccccc',
@@ -47,7 +54,7 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
         
         {isLoading ? (
           // Loading skeleton
-          Array(4).fill(0).map((_, index) => (
+          Array(5).fill(0).map((_, index) => (
             <div key={index} className={`${index < 3 ? 'border-b' : ''} py-3 flex items-center`}>
               <Skeleton className="w-10 h-10 rounded-full ml-3" />
               <div className="flex-1">
@@ -59,12 +66,12 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
           ))
         ) : expenses && expenses.length > 0 ? (
           // Actual expenses
-          expenses.slice(0, 4).map((expense, index) => {
+          expenses.slice(0, 5).map((expense, index) => {
             const { icon, color, backgroundColor } = getCategoryDetails(expense.categoryId);
             return (
               <div 
                 key={expense.id} 
-                className={`${index < expenses.slice(0, 4).length - 1 ? 'border-b' : ''} py-3 flex items-center`}
+                className={`${index < expenses.slice(0, 5).length - 1 ? 'border-b' : ''} py-3 flex items-center`}
               >
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center ml-3"
