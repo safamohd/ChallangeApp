@@ -57,13 +57,17 @@ export const expenses = pgTable("expenses", {
   userId: integer("user_id").notNull(),
 });
 
-export const insertExpenseSchema = createInsertSchema(expenses).pick({
-  title: true,
-  amount: true,
-  categoryId: true,
-  date: true,
-  notes: true,
-  userId: true,
+// Create a custom schema for expense inserts with date transformation
+export const insertExpenseSchema = z.object({
+  title: z.string(),
+  amount: z.number(),
+  categoryId: z.number(),
+  date: z.union([
+    z.date(),
+    z.string().transform((str) => new Date(str))
+  ]),
+  notes: z.string().optional(),
+  userId: z.number(),
 });
 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;

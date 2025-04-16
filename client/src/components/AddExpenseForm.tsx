@@ -71,12 +71,12 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
         return;
       }
       
-      // Convert date string to Date object for the API
+      // Format the data for the API
       const formattedData = {
         ...data,
         categoryId: Number(data.categoryId), // Ensure categoryId is a number
         amount: Number(data.amount), // Ensure amount is a number
-        date: new Date(data.date),
+        // Send the date as a string - the schema will transform it
       };
       
       console.log("Sending expense data:", formattedData);
