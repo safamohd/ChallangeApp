@@ -42,88 +42,55 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
     };
   };
 
-  // Group expenses by date
-  const groupExpensesByDate = (expenses: Expense[]) => {
-    const groups: Record<string, Expense[]> = {};
-    
-    expenses.slice(0, 6).forEach(expense => {
-      const date = new Date(expense.date);
-      const today = new Date();
-      
-      let groupKey = formatDate(expense.date);
-      
-      // Check if it's today
-      if (date.toDateString() === today.toDateString()) {
-        groupKey = 'اليوم';
-      }
-      
-      if (!groups[groupKey]) {
-        groups[groupKey] = [];
-      }
-      
-      groups[groupKey].push(expense);
-    });
-    
-    return groups;
-  };
-
-  const groupedExpenses = groupExpensesByDate(expenses || []);
-
   return (
     <Card className="bg-white rounded-xl shadow">
-      <CardContent className="p-4">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-base">المعاملات</h3>
-          <Button variant="link" className="text-primary text-sm p-0 font-medium">
+      <CardContent className="p-5">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-lg">آخر المصاريف</h3>
+          <Button variant="link" className="text-primary hover:underline text-sm p-0">
             عرض الكل
           </Button>
         </div>
         
         {isLoading ? (
           // Loading skeleton
-          Array(3).fill(0).map((_, index) => (
-            <div key={index} className="mb-3">
-              <Skeleton className="h-5 w-16 mb-2" />
-              <div className="flex items-center mb-2">
-                <Skeleton className="w-8 h-8 rounded-md ml-3" />
-                <div className="flex flex-1 justify-between items-center">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
+          Array(5).fill(0).map((_, index) => (
+            <div key={index} className={`${index < 3 ? 'border-b' : ''} py-3 flex items-center`}>
+              <Skeleton className="w-10 h-10 rounded-full ml-3" />
+              <div className="flex-1">
+                <Skeleton className="h-5 w-40 mb-1" />
+                <Skeleton className="h-4 w-24" />
               </div>
+              <Skeleton className="h-5 w-20" />
             </div>
           ))
         ) : expenses && expenses.length > 0 ? (
-          // Actual expenses grouped by date
-          Object.entries(groupedExpenses).map(([date, dateExpenses]) => (
-            <div key={date} className="mb-3">
-              <h4 className="text-sm text-gray-500 mb-2">{date}</h4>
-              {dateExpenses.map((expense) => {
-                const { icon, color, backgroundColor } = getCategoryDetails(expense.categoryId);
-                return (
-                  <div 
-                    key={expense.id} 
-                    className="flex items-center mb-2"
-                  >
-                    <div 
-                      className="w-9 h-9 rounded-md flex items-center justify-center ml-3"
-                      style={{ backgroundColor }}
-                    >
-                      <i className={`fas fa-${icon} text-sm`} style={{ color }}></i>
-                    </div>
-                    <div className="flex flex-1 justify-between items-center">
-                      <h4 className="font-medium text-sm">{expense.title}</h4>
-                      <span className="text-sm text-red-500 font-bold">-{formatCurrency(expense.amount)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))
+          // Actual expenses
+          expenses.slice(0, 5).map((expense, index) => {
+            const { icon, color, backgroundColor } = getCategoryDetails(expense.categoryId);
+            return (
+              <div 
+                key={expense.id} 
+                className={`${index < expenses.slice(0, 5).length - 1 ? 'border-b' : ''} py-3 flex items-center`}
+              >
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center ml-3"
+                  style={{ backgroundColor, color }}
+                >
+                  <i className={`fas fa-${icon}`}></i>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium">{expense.title}</h4>
+                  <p className="text-sm text-slate-500">{formatDate(expense.date)}</p>
+                </div>
+                <span className="font-bold text-primary">- {formatCurrency(expense.amount)}</span>
+              </div>
+            );
+          })
         ) : (
           // No expenses
-          <div className="text-center py-6">
-            <p className="text-slate-500 text-sm">لا توجد مصاريف مسجلة بعد</p>
+          <div className="text-center py-8">
+            <p className="text-slate-500">لا توجد مصاريف مسجلة بعد</p>
           </div>
         )}
       </CardContent>

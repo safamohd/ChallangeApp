@@ -19,19 +19,42 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // Fetch expense summary data
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading } = useQuery<{
+    totalAmount: number;
+    categorySummary: Array<{
+      categoryId: number;
+      name: string;
+      color: string;
+      icon: string;
+      amount: number;
+      percentage: number;
+    }>;
+  }>({
     queryKey: ["/api/expenses/summary", selectedMonth, selectedYear],
     retry: false,
   });
 
   // Fetch expense data
-  const { data: expenses, isLoading: expensesLoading } = useQuery({
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery<Array<{
+    id: number;
+    title: string;
+    amount: number;
+    categoryId: number;
+    date: string;
+    notes?: string;
+  }>>({
     queryKey: ["/api/expenses", selectedMonth, selectedYear],
     retry: false,
   });
 
   // Fetch savings goals
-  const { data: savingsGoals, isLoading: savingsLoading } = useQuery({
+  const { data: savingsGoals, isLoading: savingsLoading } = useQuery<Array<{
+    id: number;
+    title: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline?: string;
+  }>>({
     queryKey: ["/api/savings-goals"],
     retry: false,
   });
@@ -42,10 +65,26 @@ export default function Dashboard() {
   const remaining = budget - totalExpenses;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100 text-slate-800">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       <Header />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-4 pb-16">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4">
+        {/* Dashboard Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">مرحباً بك!</h2>
+            <p className="text-slate-500">
+              تتبع مصاريفك لشهر {getCurrentMonthName()} {getCurrentYear()}
+            </p>
+          </div>
+          <Button 
+            onClick={() => setShowAddExpenseModal(true)}
+            className="mt-4 sm:mt-0 bg-primary hover:bg-primary/90 text-white rounded-lg px-4 py-2 flex items-center"
+          >
+            <i className="fas fa-plus ml-2"></i> مصروف جديد
+          </Button>
+        </div>
+
         {/* Summary Cards */}
         <SummaryCards 
           totalExpenses={totalExpenses} 
@@ -55,26 +94,33 @@ export default function Dashboard() {
         />
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Expense Chart */}
-          <ExpenseChart 
-            summary={summary?.categorySummary || []} 
-            totalAmount={totalExpenses}
-            isLoading={summaryLoading}
-            selectedMonth={selectedMonth}
-            setSelectedMonth={setSelectedMonth}
-            selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            {/* Expense Chart */}
+            <ExpenseChart 
+              summary={summary?.categorySummary || []} 
+              totalAmount={totalExpenses}
+              isLoading={summaryLoading}
+              selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
+              selectedYear={selectedYear}
+              setSelectedYear={setSelectedYear}
+            />
 
-          {/* Recent Expenses */}
-          <RecentExpenses 
-            expenses={expenses || []} 
-            isLoading={expensesLoading} 
-          />
-          
-          {/* Savings Goal - only shows on larger screens */}
-          <div className="hidden md:block">
+            {/* Recent Expenses */}
+            <RecentExpenses 
+              expenses={expenses} 
+              isLoading={expensesLoading} 
+            />
+          </div>
+
+          <div className="lg:col-span-1">
+            {/* Add Expense Form - Mobile view will show a modal */}
+            <div className="hidden lg:block">
+              <AddExpenseForm />
+            </div>
+
+            {/* Savings Goal */}
             <SavingsGoal 
               goal={savingsGoals?.[0]} 
               isLoading={savingsLoading} 
@@ -83,12 +129,13 @@ export default function Dashboard() {
         </div>
       </main>
 
+      <Footer />
       <MobileNavigation onAddClick={() => setShowAddExpenseModal(true)} />
       
       {/* Mobile Add Expense Modal */}
       {showAddExpenseModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4 lg:items-center">
-          <div className="bg-white rounded-t-2xl lg:rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 lg:hidden">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-auto">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="font-bold text-lg">إضافة مصروف جديد</h3>
               <Button 
@@ -105,7 +152,7 @@ export default function Dashboard() {
                   setShowAddExpenseModal(false);
                   toast({
                     title: "تم إضافة المصروف بنجاح",
-                    variant: "success",
+                    variant: "default"
                   });
                 }} 
               />
