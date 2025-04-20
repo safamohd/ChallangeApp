@@ -63,67 +63,53 @@ export default function ExpenseChart({
 
   return (
     <Card className="bg-white rounded-xl shadow mb-6">
-      <CardContent className="p-5">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-lg">توزيع المصاريف</h3>
-          <div className="flex gap-2">
-            <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-              <SelectTrigger className="bg-slate-100 rounded-lg px-3 py-1 text-sm text-slate-700 w-36">
-                <SelectValue placeholder="اختر الشهر" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, index) => (
-                  <SelectItem key={index} value={index.toString()}>
-                    {month}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-              <SelectTrigger className="bg-slate-100 rounded-lg px-3 py-1 text-sm text-slate-700 w-28">
-                <SelectValue placeholder="اختر السنة" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold text-base">التحليلات</h3>
+          <button className="text-primary text-sm font-medium">عرض المزيد</button>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mb-4">
+          <div className="font-bold text-lg">
+            {months[selectedMonth]}
           </div>
         </div>
         
         {isLoading ? (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
-            <Skeleton className="w-[200px] h-[200px] rounded-full" />
-            <div className="flex flex-col gap-3 w-full max-w-[300px]">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="w-full h-6" />
+          <div className="flex flex-col items-center justify-center gap-4 p-4">
+            <Skeleton className="w-[180px] h-[180px] rounded-full" />
+            <div className="flex flex-col gap-2 w-full">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="w-full h-5" />
               ))}
             </div>
           </div>
         ) : summary && summary.length > 0 ? (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          <div className="flex flex-col items-center">
             <div 
-              className="pie-chart relative w-[200px] h-[200px] rounded-full overflow-hidden mb-4 sm:mb-0"
-              style={{ background: calculateConicGradient() }}
+              className="relative w-36 h-36 mb-4"
             >
-              <div className="chart-center absolute w-[70%] h-[70%] bg-white rounded-full top-[15%] left-[15%] flex items-center justify-center shadow-sm">
-                <span className="text-lg font-bold">{formatCurrency(totalAmount)}</span>
+              <div className="absolute inset-0 rounded-full"
+                   style={{ background: calculateConicGradient() }}>
+              </div>
+              <div className="absolute inset-[20%] bg-white rounded-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-red-500 font-bold text-xl">-{formatCurrency(totalAmount)}</div>
+                </div>
               </div>
             </div>
             
-            <div className="flex flex-col gap-3">
-              {summary.map((category) => (
-                <div key={category.categoryId} className="flex items-center">
-                  <span 
-                    className="w-3 h-3 rounded-full ml-2" 
-                    style={{ backgroundColor: category.color }}
-                  ></span>
-                  <span className="text-slate-600">{category.name}</span>
-                  <span className="mr-auto font-medium">{formatCurrency(category.amount)}</span>
+            <div className="w-full grid grid-cols-2 gap-x-8 gap-y-1">
+              {summary.slice(0, 4).map((category) => (
+                <div key={category.categoryId} className="flex justify-between py-1">
+                  <div className="flex items-center">
+                    <span 
+                      className="w-2 h-2 rounded-full ml-1" 
+                      style={{ backgroundColor: category.color }}
+                    ></span>
+                    <span className="text-sm">{category.name}</span>
+                  </div>
+                  <span className="text-sm text-red-500">-{formatCurrency(category.amount)}</span>
                 </div>
               ))}
             </div>
