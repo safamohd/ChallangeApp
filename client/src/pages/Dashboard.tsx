@@ -127,6 +127,13 @@ export default function Dashboard() {
               setSelectedYear={setSelectedYear}
             />
             
+            {/* Expense Limits (moved to here) */}
+            <ExpenseLimits
+              totalExpenses={totalExpenses}
+              monthlySalary={budget}
+              isLoading={userLoading || summaryLoading}
+            />
+            
             {/* Importance Distribution */}
             <ImportanceDistribution 
               summary={summary?.importanceSummary || []} 
@@ -145,13 +152,6 @@ export default function Dashboard() {
             <div className="hidden lg:block">
               <AddExpenseForm />
             </div>
-
-            {/* Expense Limits */}
-            <ExpenseLimits
-              totalExpenses={totalExpenses}
-              monthlySalary={budget}
-              isLoading={userLoading || summaryLoading}
-            />
 
             {/* Savings Goal */}
             <SavingsGoal 
