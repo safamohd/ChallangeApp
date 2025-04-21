@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'wouter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +29,8 @@ interface RecentExpensesProps {
 }
 
 export default function RecentExpenses({ expenses, isLoading }: RecentExpensesProps) {
+  const [_, setLocation] = useLocation();
+  
   // Fetch categories for icon and color mapping
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
@@ -41,6 +44,11 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
       color: category?.color || '#cccccc',
       backgroundColor: category?.color ? `${category.color}20` : '#f1f5f9', // 20 is for 12% opacity
     };
+  };
+  
+  // Navigate to all expenses page
+  const goToAllExpenses = () => {
+    setLocation('/expenses');
   };
 
   return (

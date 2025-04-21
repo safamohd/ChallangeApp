@@ -20,11 +20,11 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
         </button>
         
         <button 
-          className={`flex flex-col items-center ${location === '/reports' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/reports')}
+          className={`flex flex-col items-center ${location === '/expenses' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/expenses')}
         >
-          <i className="fas fa-chart-pie text-lg"></i>
-          <span className="text-xs mt-1">التقارير</span>
+          <i className="fas fa-receipt text-lg"></i>
+          <span className="text-xs mt-1">المصاريف</span>
         </button>
         
         <button 

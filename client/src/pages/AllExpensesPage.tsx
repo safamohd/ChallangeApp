@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Expense } from '@shared/schema';
+import { Expense, Category } from '@shared/schema';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
@@ -25,7 +25,7 @@ export default function AllExpensesPage() {
     queryKey: ["/api/expenses"],
   });
   
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
   
@@ -46,8 +46,8 @@ export default function AllExpensesPage() {
   });
   
   // Get category details by ID
-  const getCategoryById = (id: number) => {
-    return categories.find(category => category.id === id);
+  const getCategoryById = (id: number): Category | undefined => {
+    return categories.find((category: Category) => category.id === id);
   };
   
   // Toggle sort order
@@ -85,7 +85,7 @@ export default function AllExpensesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">جميع الفئات</SelectItem>
-                    {categories.map((category) => (
+                    {categories.map((category: Category) => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         <div className="flex items-center">
                           <i className={`fas fa-${category.icon} mr-2`} style={{ color: category.color }}></i>
