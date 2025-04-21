@@ -28,6 +28,9 @@ const expenseFormSchema = z.object({
   categoryId: z.coerce.number({ invalid_type_error: "الرجاء اختيار فئة" }),
   date: z.string().min(1, { message: "الرجاء اختيار تاريخ" }),
   notes: z.string().optional(),
+  importance: z.enum(["مهم", "عادي", "رفاهية"], { 
+    invalid_type_error: "الرجاء اختيار مستوى الأهمية" 
+  }),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -56,6 +59,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
       categoryId: 0, // Use 0 instead of undefined
       date: today,
       notes: "",
+      importance: "عادي",
     },
   });
   
@@ -91,6 +95,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
         categoryId: data.categoryId, // Keep the same category selected
         date: today,
         notes: "",
+        importance: "عادي", // Reset to default importance
       });
       
       // Show success message
@@ -222,6 +227,47 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
                       {...field} 
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="importance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm text-slate-600">مستوى الأهمية</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
+                        <SelectValue placeholder="اختر مستوى الأهمية" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="مهم">
+                        <div className="flex items-center">
+                          <i className="fas fa-exclamation-circle mr-2 text-red-500"></i>
+                          <span>مهم</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="عادي">
+                        <div className="flex items-center">
+                          <i className="fas fa-minus-circle mr-2 text-blue-500"></i>
+                          <span>عادي</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="رفاهية">
+                        <div className="flex items-center">
+                          <i className="fas fa-star mr-2 text-purple-500"></i>
+                          <span>رفاهية</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

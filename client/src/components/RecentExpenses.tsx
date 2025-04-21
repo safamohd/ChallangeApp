@@ -19,6 +19,7 @@ interface Expense {
   categoryId: number;
   date: string;
   notes?: string;
+  importance: string;
 }
 
 interface RecentExpensesProps {
@@ -80,7 +81,20 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
                   <i className={`fas fa-${icon}`}></i>
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-medium">{expense.title}</h4>
+                  <div className="flex items-center">
+                    <h4 className="font-medium">{expense.title}</h4>
+                    {expense.importance && (
+                      <span className={`mr-2 text-xs px-2 py-0.5 rounded-full ${
+                        expense.importance === "مهم" 
+                          ? "bg-red-100 text-red-800" 
+                          : expense.importance === "رفاهية" 
+                            ? "bg-purple-100 text-purple-800" 
+                            : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {expense.importance}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-500">{formatDate(expense.date)}</p>
                 </div>
                 <span className="font-bold text-primary">- {formatCurrency(expense.amount)}</span>
