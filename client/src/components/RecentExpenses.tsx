@@ -56,7 +56,11 @@ export default function RecentExpenses({ expenses, isLoading }: RecentExpensesPr
       <CardContent className="p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg">آخر المصاريف</h3>
-          <Button variant="link" className="text-primary hover:underline text-sm p-0">
+          <Button 
+            variant="link" 
+            className="text-primary hover:underline text-sm p-0"
+            onClick={goToAllExpenses}
+          >
             عرض الكل
           </Button>
         </div>
