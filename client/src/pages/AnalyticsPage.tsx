@@ -251,6 +251,12 @@ export default function AnalyticsPage() {
     setShowAddExpense(false);
     // InvalidateQueries سيؤدي إلى إعادة تحميل البيانات تلقائيًا
     queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary"] });
+    
+    // إعادة تحميل الاستعلام بإعدادات الفلتر الحالية
+    queryClient.invalidateQueries({ 
+      queryKey: ["/api/expenses", timeFilter, startDate] 
+    });
   };
 
   return (
@@ -389,15 +395,15 @@ export default function AnalyticsPage() {
               <CardTitle className="text-center">حسب أهمية المصروف</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] flex justify-center items-center mb-4">
+              <div className="h-[350px] flex justify-center items-center mb-4">
                 {isLoading ? (
                   <Skeleton className="h-full w-full rounded-lg" />
                 ) : totalExpenses > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="90%" height="100%" className="mx-auto">
                     <BarChart
                       data={importanceData}
                       layout="horizontal"
-                      margin={{ top: 20, right: 20, left: 20, bottom: 40 }}
+                      margin={{ top: 30, right: 20, left: 20, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
@@ -637,11 +643,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="p-4">
               <AddExpenseForm 
-                onSuccess={() => {
-                  setShowAddExpense(false);
-                  queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary"] });
-                }} 
+                onSuccess={handleAddExpenseSuccess} 
               />
             </div>
           </div>
