@@ -1,0 +1,69 @@
+Create a new “تحليلات” (Analytics) page for the Arabic RTL budget tracking web app. The purpose of this page is to provide the user with insightful financial analytics and summaries based on expense data.
+
+🔹 Layout & General Design:
+
+Fully responsive, clean UI with Arabic RTL support.
+
+Use Arabic labels for all components.
+
+Visually appealing layout using cards, section headers, and data charts.
+
+🔸 Analytics Filters: At the top of the page, add a dropdown menu to filter the analysis period: • آخر ٧ أيام
+• آخر ٣٠ يوم
+• السنة الحالية
+Changing this filter should immediately update all analytics on the page.
+
+📊 Charts:
+
+Pie Chart (تصنيف المصروفات):
+
+Shows percentage distribution of expenses by category.
+
+Each slice represents one of the Arabic categories from the category field in the database.
+
+Bar Chart (حسب أهمية المصروف):
+
+Compares total expenses grouped by importance: • 🟢 مهم
+• 🟡 عادي
+• 🔴 رفاهية
+
+Time Series Line Chart (المصروفات حسب الأيام):
+
+X-axis: days or weeks depending on selected filter.
+
+Y-axis: total expense per day/week.
+
+Helps show trends in spending over time.
+
+Arabic label: "المصروفات اليومية" or "الإنفاق الأسبوعي"
+
+📝 Summary Section (الملخص المكتوب):
+
+Display a smart, Arabic summary text generated based on real data, e.g.: "في آخر ٣٠ يوم، قمتِ بإنفاق أعلى نسبة على المطاعم، وبلغت نسبة المصروفات من فئة 'رفاهية' حوالي ٢٥٪ من إجمالي المصروفات."
+
+Update the summary dynamically when the filter is changed.
+
+💾 Data Source:
+
+Fetch data from the PostgreSQL expenses table.
+
+Use fields: amount, category, importance, created_at
+
+Apply correct date filtering based on the selected analysis period.
+
+🎨 Additional Notes:
+
+Display all numbers using Arabic numerals.
+
+Use the official Saudi Riyal currency symbol (﷼) in all expense values.
+
+Make the UI modular for future analytics features.
+
+📍 Navigation Integration:
+
+Add "تحليلات" page to the bottom navigation bar.
+
+Replace the current "الأهداف" tab with this new "تحليلات" page.
+
+✅ Make sure this entire task is completed in a single checkpoint.
+
