@@ -36,11 +36,11 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
         </button>
         
         <button 
-          className={`flex flex-col items-center ${location === '/goals' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/goals')}
+          className={`flex flex-col items-center ${location === '/analytics' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/analytics')}
         >
-          <i className="fas fa-bullseye text-lg"></i>
-          <span className="text-xs mt-1">الأهداف</span>
+          <i className="fas fa-chart-pie text-lg"></i>
+          <span className="text-xs mt-1">تحليلات</span>
         </button>
         
         <button 

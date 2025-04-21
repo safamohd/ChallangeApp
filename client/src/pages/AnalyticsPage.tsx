@@ -1,0 +1,439 @@
+import { useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import MobileNavigation from "@/components/MobileNavigation";
+import AddExpenseForm from "@/components/AddExpenseForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatCurrency } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+type TimeFilter = "week" | "month" | "year";
+
+// استرجاع تاريخ بداية الفترة حسب الفلتر المختار
+const getStartDate = (filter: TimeFilter): Date => {
+  const now = new Date();
+  switch (filter) {
+    case "week":
+      const lastWeek = new Date(now);
+      lastWeek.setDate(now.getDate() - 7);
+      return lastWeek;
+    case "month":
+      const lastMonth = new Date(now);
+      lastMonth.setDate(now.getDate() - 30);
+      return lastMonth;
+    case "year":
+      const lastYear = new Date(now);
+      lastYear.setFullYear(now.getFullYear() - 1);
+      return lastYear;
+  }
+};
+
+// تحويل تاريخ إلى سلسلة نصية بتنسيق YYYY-MM-DD
+const formatDateForApi = (date: Date): string => {
+  return date.toISOString().split("T")[0];
+};
+
+export default function AnalyticsPage() {
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  
+  // استرجاع بيانات المصاريف
+  const startDate = formatDateForApi(getStartDate(timeFilter));
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery<any[]>({
+    queryKey: [
+      "/api/expenses",
+      timeFilter,
+      startDate
+    ],
+    queryFn: async () => {
+      const url = new URL('/api/expenses', window.location.origin);
+      url.searchParams.append('startDate', startDate);
+      const res = await fetch(url);
+      return res.json();
+    },
+    retry: false,
+  });
+
+  // استرجاع بيانات الفئات
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<any[]>({
+    queryKey: ["/api/categories"],
+    retry: false,
+  });
+
+  // استرجاع بيانات المستخدم
+  const { data: user, isLoading: userLoading } = useQuery<{
+    id: number;
+    username: string;
+    monthlySalary: number;
+  }>({
+    queryKey: ["/api/user"],
+    retry: false,
+  });
+
+  // التحميل
+  const isLoading = expensesLoading || categoriesLoading || userLoading;
+
+  // تجهيز بيانات المخطط الدائري (حسب الفئة)
+  const categoryData = categories.map((category) => {
+    const categoryExpenses = expenses.filter(
+      (expense) => expense.categoryId === category.id
+    );
+    
+    const total = categoryExpenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    
+    return {
+      name: category.name,
+      value: total,
+      color: category.color,
+    };
+  }).filter(item => item.value > 0);
+
+  // إجمالي المصاريف
+  const totalExpenses = expenses.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
+
+  // تجهيز بيانات مخطط الأعمدة (حسب الأهمية)
+  const importanceData = [
+    {
+      name: "مهم",
+      value: expenses
+        .filter((expense) => expense.importance === "مهم")
+        .reduce((sum, expense) => sum + expense.amount, 0),
+      color: "#dc2626", // أحمر
+    },
+    {
+      name: "عادي",
+      value: expenses
+        .filter((expense) => expense.importance === "عادي")
+        .reduce((sum, expense) => sum + expense.amount, 0),
+      color: "#2563eb", // أزرق
+    },
+    {
+      name: "رفاهية",
+      value: expenses
+        .filter((expense) => expense.importance === "رفاهية")
+        .reduce((sum, expense) => sum + expense.amount, 0),
+      color: "#7e22ce", // بنفسجي
+    },
+  ];
+
+  // تجهيز بيانات المخطط الزمني
+  const getTimeSeriesData = () => {
+    // إنشاء قاموس التواريخ
+    const dateMap: Record<string, number> = {};
+    
+    // تعيين التواريخ من بداية الفترة إلى الآن
+    const startDate = getStartDate(timeFilter);
+    const currentDate = new Date();
+    
+    let current = new Date(startDate);
+    while (current <= currentDate) {
+      const dateStr = formatDateForApi(current);
+      dateMap[dateStr] = 0;
+      current.setDate(current.getDate() + 1);
+    }
+    
+    // ملء البيانات
+    expenses.forEach((expense) => {
+      const expenseDate = expense.date.split('T')[0];
+      if (dateMap[expenseDate] !== undefined) {
+        dateMap[expenseDate] += expense.amount;
+      }
+    });
+    
+    // تحويل إلى مصفوفة
+    return Object.entries(dateMap).map(([date, amount]) => ({
+      date,
+      amount,
+    }));
+  };
+  
+  const timeSeriesData = getTimeSeriesData();
+
+  // إعداد نص الملخص
+  const getSummaryText = () => {
+    if (isLoading || categories.length === 0 || expenses.length === 0) {
+      return "جاري تحميل البيانات...";
+    }
+
+    // البحث عن الفئة ذات الإنفاق الأعلى
+    let maxCategory = { name: "", value: 0 };
+    for (const cat of categoryData) {
+      if (cat.value > maxCategory.value) {
+        maxCategory = cat;
+      }
+    }
+
+    // حساب نسبة مصاريف الرفاهية
+    const luxuryPercentage = 
+      importanceData[2].value > 0 
+        ? Math.round((importanceData[2].value / totalExpenses) * 100) 
+        : 0;
+
+    // تنسيق الفترة الزمنية
+    let periodText = "";
+    switch (timeFilter) {
+      case "week":
+        periodText = "آخر ٧ أيام";
+        break;
+      case "month":
+        periodText = "آخر ٣٠ يوم";
+        break;
+      case "year":
+        periodText = "السنة الحالية";
+        break;
+    }
+
+    return `في ${periodText}، قمت بإنفاق أعلى نسبة على ${
+      maxCategory.name || "لا توجد بيانات"
+    }، وبلغت نسبة المصروفات من فئة 'رفاهية' حوالي ${luxuryPercentage}٪ من إجمالي المصروفات.`;
+  };
+
+  // إعادة تحميل البيانات بعد إضافة مصروف جديد
+  const handleAddExpenseSuccess = () => {
+    setShowAddExpense(false);
+    // InvalidateQueries سيؤدي إلى إعادة تحميل البيانات تلقائيًا
+    queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+      <Header />
+
+      {/* نافذة إضافة مصروف جديدة */}
+      <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
+        <DialogContent className="max-w-md mx-auto">
+          <AddExpenseForm onSuccess={handleAddExpenseSuccess} />
+        </DialogContent>
+      </Dialog>
+
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4">
+        {/* عنوان الصفحة وفلتر التاريخ */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+          <h1 className="text-2xl font-bold mb-4 md:mb-0">تحليلات المصاريف</h1>
+          <Select
+            value={timeFilter}
+            onValueChange={(value) => setTimeFilter(value as TimeFilter)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="اختر الفترة الزمنية" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">آخر ٧ أيام</SelectItem>
+              <SelectItem value="month">آخر ٣٠ يوم</SelectItem>
+              <SelectItem value="year">السنة الحالية</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* ملخص الإحصائيات */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="text-lg font-medium text-center">
+              {isLoading ? (
+                <Skeleton className="h-6 w-full" />
+              ) : (
+                getSummaryText()
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* الرسوم البيانية */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* مخطط الفئات */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">تصنيف المصروفات</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex justify-center items-center">
+              {isLoading ? (
+                <Skeleton className="h-full w-full rounded-lg" />
+              ) : categoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      labelLine={true}
+                      label={({ name, percent }) => 
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value as number)} 
+                      contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground">
+                  لا توجد بيانات للعرض
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* مخطط حسب الأهمية */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">حسب أهمية المصروف</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex justify-center items-center">
+              {isLoading ? (
+                <Skeleton className="h-full w-full rounded-lg" />
+              ) : totalExpenses > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={importanceData}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      tick={{ fill: "#64748b" }} 
+                    />
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value as number)} 
+                      contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                    />
+                    <Bar dataKey="value" name="المبلغ">
+                      {importanceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground">
+                  لا توجد بيانات للعرض
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* مخطط المصاريف حسب الأيام */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">
+              {timeFilter === "week" || timeFilter === "month"
+                ? "المصروفات اليومية"
+                : "الإنفاق الشهري"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px] flex justify-center items-center">
+            {isLoading ? (
+              <Skeleton className="h-full w-full rounded-lg" />
+            ) : timeSeriesData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={timeSeriesData}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: "#64748b" }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      if (timeFilter === "year") {
+                        // للسنة نستخدم اسم الشهر
+                        return new Date(value).toLocaleDateString("ar-SA", { month: "short" });
+                      } else {
+                        // لليوم والشهر نستخدم اليوم
+                        return date.getDate().toString();
+                      }
+                    }}
+                  />
+                  <YAxis 
+                    tick={{ fill: "#64748b" }} 
+                    tickFormatter={(value) => {
+                      // اختصار الأرقام الكبيرة
+                      if (value >= 1000) {
+                        return `${(value / 1000).toFixed(1)}k`;
+                      }
+                      return value.toString();
+                    }}
+                  />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(value as number)} 
+                    labelFormatter={(label) => {
+                      return new Date(label).toLocaleDateString("ar-SA");
+                    }}
+                    contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    name="المصروفات"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                    activeDot={{ r: 8 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center text-muted-foreground">
+                لا توجد بيانات للعرض
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      <Footer />
+      <MobileNavigation onAddClick={() => setShowAddExpense(true)} />
+    </div>
+  );
+}

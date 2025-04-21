@@ -78,10 +78,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       
+      // New query parameters for filtering by date range
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+      
       let expenses;
-      if (month !== undefined && year !== undefined) {
+      
+      // If we have startDate parameter, filter by date range
+      if (startDate) {
+        const start = new Date(startDate);
+        const end = endDate ? new Date(endDate) : new Date();
+        
+        // Get all expenses and then filter
+        const allExpenses = await storage.getExpenses(userId);
+        
+        expenses = allExpenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= start && expenseDate <= end;
+        });
+      }
+      // Otherwise, if we have month/year parameters, filter by month/year
+      else if (month !== undefined && year !== undefined) {
         expenses = await storage.getExpensesByMonth(userId, month, year);
-      } else {
+      } 
+      // If no filters are provided, get all expenses
+      else {
         expenses = await storage.getExpenses(userId);
       }
       
@@ -181,8 +202,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const year = req.query.year !== undefined 
         ? parseInt(req.query.year as string) 
         : new Date().getFullYear();
+        
+      // New query parameters for filtering by date range
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
       
-      const expenses = await storage.getExpensesByMonth(userId, month, year);
+      let expenses;
+      
+      // If we have startDate parameter, filter by date range
+      if (startDate) {
+        const start = new Date(startDate);
+        const end = endDate ? new Date(endDate) : new Date();
+        
+        // Get all expenses and then filter
+        const allExpenses = await storage.getExpenses(userId);
+        
+        expenses = allExpenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= start && expenseDate <= end;
+        });
+      } else {
+        // Otherwise filter by month/year
+        expenses = await storage.getExpensesByMonth(userId, month, year);
+      }
+      
       const categories = await storage.getCategories();
       
       // Log expenses for debugging
