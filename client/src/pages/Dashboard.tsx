@@ -8,6 +8,8 @@ import ExpenseChart from "@/components/ExpenseChart";
 import RecentExpenses from "@/components/RecentExpenses";
 import AddExpenseForm from "@/components/AddExpenseForm";
 import SavingsGoal from "@/components/SavingsGoal";
+import SalarySettings from "@/components/SalarySettings";
+import ImportanceDistribution from "@/components/ImportanceDistribution";
 import { Button } from "@/components/ui/button";
 import { getCurrentMonthName, getCurrentYear } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +31,12 @@ export default function Dashboard() {
       amount: number;
       percentage: number;
     }>;
+    importanceSummary: Array<{
+      importance: string;
+      amount: number;
+      percentage: number;
+      color: string;
+    }>;
   }>({
     queryKey: ["/api/expenses/summary", selectedMonth, selectedYear],
     retry: false,
@@ -42,6 +50,7 @@ export default function Dashboard() {
     categoryId: number;
     date: string;
     notes?: string;
+    importance: string;
   }>>({
     queryKey: ["/api/expenses", selectedMonth, selectedYear],
     retry: false,
@@ -58,9 +67,19 @@ export default function Dashboard() {
     queryKey: ["/api/savings-goals"],
     retry: false,
   });
+  
+  // Fetch user data for monthly salary
+  const { data: user, isLoading: userLoading } = useQuery<{
+    id: number;
+    username: string;
+    monthlySalary: number;
+  }>({
+    queryKey: ["/api/user"],
+    retry: false,
+  });
 
   // Calculate budget and remaining amount
-  const budget = 5000; // Fixed budget for now
+  const budget = user?.monthlySalary || 0;
   const totalExpenses = summary?.totalAmount || 0;
   const remaining = budget - totalExpenses;
 
@@ -106,6 +125,12 @@ export default function Dashboard() {
               selectedYear={selectedYear}
               setSelectedYear={setSelectedYear}
             />
+            
+            {/* Importance Distribution */}
+            <ImportanceDistribution 
+              summary={summary?.importanceSummary || []} 
+              isLoading={summaryLoading} 
+            />
 
             {/* Recent Expenses */}
             <RecentExpenses 
@@ -119,6 +144,9 @@ export default function Dashboard() {
             <div className="hidden lg:block">
               <AddExpenseForm />
             </div>
+
+            {/* Salary Settings */}
+            <SalarySettings />
 
             {/* Savings Goal */}
             <SavingsGoal 

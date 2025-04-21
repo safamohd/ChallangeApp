@@ -217,9 +217,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sort by amount in descending order
       categorySummary.sort((a, b) => b.amount - a.amount);
       
+      // Group expenses by importance
+      const byImportance = expenses.reduce((acc, expense) => {
+        const importance = expense.importance || "عادي";
+        if (!acc[importance]) {
+          acc[importance] = 0;
+        }
+        acc[importance] += expense.amount;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Format the importance summary
+      const importanceSummary = Object.entries(byImportance).map(([importance, amount]) => {
+        return {
+          importance,
+          amount,
+          percentage: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
+          color: importance === "مهم" ? "#ef4444" : importance === "رفاهية" ? "#8b5cf6" : "#3b82f6"
+        };
+      });
+      
+      // Sort by amount in descending order
+      importanceSummary.sort((a, b) => b.amount - a.amount);
+      
       res.json({
         totalAmount,
-        categorySummary
+        categorySummary,
+        importanceSummary
       });
     } catch (error) {
       console.error("Error fetching expense summary:", error);
