@@ -66,32 +66,8 @@ export default function ExpenseChart({
       <CardContent className="p-5">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-bold text-lg">توزيع المصاريف</h3>
-          <div className="flex gap-2">
-            <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-              <SelectTrigger className="bg-slate-100 rounded-lg px-3 py-1 text-sm text-slate-700 w-36">
-                <SelectValue placeholder="اختر الشهر" />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, index) => (
-                  <SelectItem key={index} value={index.toString()}>
-                    {month}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-              <SelectTrigger className="bg-slate-100 rounded-lg px-3 py-1 text-sm text-slate-700 w-28">
-                <SelectValue placeholder="اختر السنة" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="text-sm text-slate-500 font-medium">
+            {months[selectedMonth]} {selectedYear}
           </div>
         </div>
         

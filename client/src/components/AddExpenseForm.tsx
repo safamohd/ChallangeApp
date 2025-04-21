@@ -125,7 +125,6 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
   return (
     <Card className="bg-white rounded-xl shadow mb-6">
       <CardContent className="p-5">
-        <h3 className="font-bold text-lg mb-4">إضافة مصروف جديد</h3>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
