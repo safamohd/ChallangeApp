@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Expense, Category } from '@shared/schema';
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import MobileNavigation from "@/components/MobileNavigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { 
@@ -13,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate, getCategoryIcon } from '@/lib/utils';
 import { Search, ArrowUpDown } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AllExpensesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,13 +59,19 @@ export default function AllExpensesPage() {
     setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
   };
   
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const { toast } = useToast();
+
   return (
-    <div className="container mx-auto px-4 py-6 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-center">جميع المصاريف</h1>
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+      <Header />
       
-      {/* Search and Filter Bar */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-6 text-center">جميع المصاريف</h1>
+        
+        {/* Search and Filter Bar */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
           <div className="flex flex-col space-y-3">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
@@ -231,6 +241,10 @@ export default function AllExpensesPage() {
           </p>
         </div>
       )}
+      </main>
+
+      <Footer />
+      <MobileNavigation onAddClick={() => setShowAddExpenseModal(true)} />
     </div>
   );
 }
