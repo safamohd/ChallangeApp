@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Expense, Category } from '@shared/schema';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
+import AddExpenseForm from "@/components/AddExpenseForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { 
   Select, 
   SelectContent, 
@@ -15,8 +17,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate, getCategoryIcon } from '@/lib/utils';
-import { Search, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSwipeable } from 'react-swipeable';
+import { apiRequest, queryClient } from '../lib/queryClient';
 
 export default function AllExpensesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +64,48 @@ export default function AllExpensesPage() {
   };
   
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [swipedExpenseId, setSwipedExpenseId] = useState<number | null>(null);
+  
+  // Setup swipe handlers once here instead of inside the map function
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: (eventData) => {
+      // Getting the expense ID from the data-id attribute of the swiped element
+      const element = eventData.event.target as HTMLElement;
+      const closestItem = element.closest('[data-id]');
+      if (closestItem) {
+        const id = parseInt(closestItem.getAttribute('data-id') || '0');
+        if (id) setSwipedExpenseId(id);
+      }
+    },
+    trackMouse: true
+  });
   const { toast } = useToast();
+  
+  // Delete expense mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/expenses/${id}`);
+    },
+    onSuccess: () => {
+      // Invalidate all expense-related queries
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary"] });
+      
+      toast({
+        title: "تم حذف المصروف بنجاح",
+        variant: "default"
+      });
+      
+      setSwipedExpenseId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "فشل في حذف المصروف",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
@@ -182,49 +227,98 @@ export default function AllExpensesPage() {
           // Expenses list
           sortedExpenses.map((expense) => {
             const category = getCategoryById(expense.categoryId);
+            const isExpenseSwiped = swipedExpenseId === expense.id;
             
             return (
-              <Card key={expense.id} className="bg-white rounded-xl shadow">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center mb-1">
-                        {category && (
-                          <i 
-                            className={`${getCategoryIcon(category.icon)} ml-2`} 
-                            style={{ color: category.color }}
-                          ></i>
-                        )}
-                        <h3 className="font-bold">{expense.title}</h3>
-                        {expense.importance === 'مهم' && (
-                          <span className="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2 py-0.5 rounded">
-                            <i className="fas fa-exclamation-circle ml-1"></i>
-                            مهم
-                          </span>
-                        )}
-                        {expense.importance === 'رفاهية' && (
-                          <span className="bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2 py-0.5 rounded">
-                            <i className="fas fa-star ml-1"></i>
-                            رفاهية
-                          </span>
-                        )}
+              <div 
+                key={expense.id} 
+                className="relative overflow-hidden"
+                data-id={expense.id}
+                onClick={() => isExpenseSwiped && setSwipedExpenseId(null)}
+                onTouchStart={() => {}}
+                // نستخدم JavaScript العادي للسحب بدلاً من المكتبة
+                onTouchMove={(e) => {
+                  const touch = e.touches[0];
+                  const currentX = touch.clientX;
+                  const startX = (e.target as any).startX || currentX;
+                  (e.target as any).startX = startX;
+                  
+                  const deltaX = currentX - startX;
+                  // إذا كان السحب لليمين بمسافة كافية
+                  if (deltaX > 50) {
+                    setSwipedExpenseId(expense.id);
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  (e.target as any).startX = undefined;
+                }}
+              >
+                {/* Delete button revealed when swiped */}
+                <div 
+                  className={`absolute inset-y-0 left-0 bg-red-500 text-white flex items-center justify-center transition-transform duration-200 ease-out ${
+                    isExpenseSwiped ? 'translate-x-0' : 'translate-x-full'
+                  }`}
+                  style={{ width: '80px' }}
+                >
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteMutation.mutate(expense.id)}
+                    className="text-white hover:text-white hover:bg-red-600"
+                  >
+                    <Trash2 size={22} />
+                  </Button>
+                </div>
+                
+                {/* Expense card */}
+                <div
+                  className={`relative bg-white transition-transform duration-200 ease-out ${
+                    isExpenseSwiped ? 'translate-x-20' : 'translate-x-0'
+                  }`}
+                >
+                  <Card className="bg-white rounded-xl shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="flex items-center mb-1">
+                            {category && (
+                              <i 
+                                className={`${getCategoryIcon(category.icon)} ml-2`} 
+                                style={{ color: category.color }}
+                              ></i>
+                            )}
+                            <h3 className="font-bold">{expense.title}</h3>
+                            {expense.importance === 'مهم' && (
+                              <span className="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2 py-0.5 rounded">
+                                <i className="fas fa-exclamation-circle ml-1"></i>
+                                مهم
+                              </span>
+                            )}
+                            {expense.importance === 'رفاهية' && (
+                              <span className="bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2 py-0.5 rounded">
+                                <i className="fas fa-star ml-1"></i>
+                                رفاهية
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {category?.name} • {formatDate(expense.date)}
+                          </div>
+                          {expense.notes && (
+                            <p className="text-sm mt-2 text-slate-600">{expense.notes}</p>
+                          )}
+                        </div>
+                        <div className="text-lg font-bold" style={{ 
+                          color: expense.importance === 'مهم' ? '#dc2626' : 
+                                expense.importance === 'رفاهية' ? '#7e22ce' : '#2563eb' 
+                        }}>
+                          {formatCurrency(expense.amount)}
+                        </div>
                       </div>
-                      <div className="text-sm text-slate-500">
-                        {category?.name} • {formatDate(expense.date)}
-                      </div>
-                      {expense.notes && (
-                        <p className="text-sm mt-2 text-slate-600">{expense.notes}</p>
-                      )}
-                    </div>
-                    <div className="text-lg font-bold" style={{ 
-                      color: expense.importance === 'مهم' ? '#dc2626' : 
-                             expense.importance === 'رفاهية' ? '#7e22ce' : '#2563eb' 
-                    }}>
-                      {formatCurrency(expense.amount)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             );
           })
         )}
@@ -245,6 +339,35 @@ export default function AllExpensesPage() {
 
       <Footer />
       <MobileNavigation onAddClick={() => setShowAddExpenseModal(true)} />
+      
+      {/* Mobile Add Expense Modal */}
+      {showAddExpenseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="font-bold text-lg">إضافة مصروف جديد</h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowAddExpenseModal(false)}
+              >
+                <i className="fas fa-times"></i>
+              </Button>
+            </div>
+            <div className="p-4">
+              <AddExpenseForm 
+                onSuccess={() => {
+                  setShowAddExpenseModal(false);
+                  toast({
+                    title: "تم إضافة المصروف بنجاح",
+                    variant: "default"
+                  });
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
