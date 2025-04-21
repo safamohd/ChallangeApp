@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
                     <BarChart
                       data={importanceData}
                       layout="vertical"
-                      margin={{ top: 10, right: 40, left: 40, bottom: 20 }}
+                      margin={{ top: 10, right: 40, left: 80, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" />
@@ -405,12 +405,12 @@ export default function AnalyticsPage() {
                         dataKey="name" 
                         type="category" 
                         tick={{ fill: "#64748b" }} 
-                        width={100}
-                        tickMargin={15}
-                        tickFormatter={(value) => {
-                          // إضافة مسافات بين المحتوى ومحور Y لمنع التداخل
-                          return `   ${value}`;
-                        }}
+                        width={120}
+                        tickMargin={20}
+                        orientation="left"
+                        mirror={true}
+                        tickFormatter={(value) => value}
+                        tickSize={0}
                       />
                       <Tooltip 
                         formatter={(value) => formatCurrency(value as number)} 
