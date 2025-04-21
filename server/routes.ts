@@ -8,6 +8,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
   const apiRouter = express.Router();
   
+  // User API
+  apiRouter.get("/user", async (_req: Request, res: Response) => {
+    try {
+      // For now, we'll use a mock user with ID 1 for demonstration
+      const user = await storage.getUser(1);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود" });
+      }
+      
+      // Don't send the password
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "فشل في جلب بيانات المستخدم" });
+    }
+  });
+
+  // PUT /api/user/salary - Update user's monthly salary
+  apiRouter.put("/user/salary", async (req: Request, res: Response) => {
+    const { monthlySalary } = req.body;
+    
+    if (!monthlySalary || monthlySalary <= 0) {
+      return res.status(400).json({ message: "يجب أن يكون الراتب الشهري رقمًا موجبًا" });
+    }
+    
+    try {
+      // For now, we'll use a mock user with ID 1 for demonstration
+      const userId = 1;
+      const updatedUser = await storage.updateUserSalary(userId, monthlySalary);
+      
+      // Don't send the password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating salary:", error);
+      res.status(500).json({ message: "فشل في تحديث الراتب الشهري" });
+    }
+  });
+  
   // Categories API
   apiRouter.get("/categories", async (_req: Request, res: Response) => {
     try {

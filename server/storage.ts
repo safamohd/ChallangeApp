@@ -13,6 +13,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserSalary(id: number, monthlySalary: number): Promise<User>;
   
   // Category operations
   getCategories(): Promise<Category[]>;
@@ -58,6 +59,19 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+  
+  async updateUserSalary(id: number, monthlySalary: number): Promise<User> {
+    const [updatedUser] = await db.update(users)
+      .set({ monthlySalary })
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updatedUser) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    
+    return updatedUser;
   }
   
   // Category operations
@@ -203,7 +217,11 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Create a default user
-      const user = await this.createUser({ username: "demo", password: "password" });
+      const user = await this.createUser({ 
+        username: "demo", 
+        password: "password",
+        monthlySalary: 10000 // Default monthly salary
+      });
       
       // Create a default savings goal
       const goal = await this.createSavingsGoal({
@@ -230,7 +248,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 1,
           date: new Date(year, month, 25),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "رفاهية"
         },
         {
           title: "سوق المملكة",
@@ -238,7 +257,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 2,
           date: new Date(year, month, 23),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "عادي"
         },
         {
           title: "محطة وقود الرياض",
@@ -246,7 +266,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 3,
           date: new Date(year, month, 20),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "مهم"
         },
         {
           title: "سينما مول الرياض",
@@ -254,7 +275,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 4,
           date: new Date(year, month, 18),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "رفاهية"
         },
         {
           title: "مصاريف متنوعة",
@@ -262,7 +284,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 5,
           date: new Date(year, month, 15),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "عادي"
         },
         {
           title: "مطعم شاورما",
@@ -270,7 +293,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 1,
           date: new Date(year, month, 12),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "رفاهية"
         },
         {
           title: "ملابس",
@@ -278,7 +302,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 2,
           date: new Date(year, month, 10),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "عادي"
         },
         {
           title: "أوبر",
@@ -286,7 +311,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 3,
           date: new Date(year, month, 8),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "مهم"
         },
         {
           title: "اشتراك نتفلكس",
@@ -294,7 +320,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 4,
           date: new Date(year, month, 5),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "رفاهية"
         },
         {
           title: "صيانة",
@@ -302,7 +329,8 @@ export class DatabaseStorage implements IStorage {
           categoryId: 5,
           date: new Date(year, month, 3),
           notes: "",
-          userId: user.id
+          userId: user.id,
+          importance: "مهم"
         }
       ];
       
