@@ -7,7 +7,7 @@ import SummaryCards from "@/components/SummaryCards";
 import ExpenseChart from "@/components/ExpenseChart";
 import RecentExpenses from "@/components/RecentExpenses";
 import AddExpenseForm from "@/components/AddExpenseForm";
-import SavingsGoal from "@/components/SavingsGoal";
+
 import SalarySettings from "@/components/SalarySettings";
 import ImportanceDistribution from "@/components/ImportanceDistribution";
 import ExpenseLimits from "@/components/ExpenseLimits";
@@ -18,8 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 export default function Dashboard() {
   const { toast } = useToast();
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  // استخدام الشهر الحالي والسنة الحالية دائمًا
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
 
   // Fetch expense summary data
   const { data: summary, isLoading: summaryLoading } = useQuery<{
@@ -39,7 +40,7 @@ export default function Dashboard() {
       color: string;
     }>;
   }>({
-    queryKey: ["/api/expenses/summary", selectedMonth, selectedYear],
+    queryKey: ["/api/expenses/summary", currentMonth, currentYear],
     retry: false,
   });
 
@@ -53,21 +54,11 @@ export default function Dashboard() {
     notes?: string;
     importance: string;
   }>>({
-    queryKey: ["/api/expenses", selectedMonth, selectedYear],
+    queryKey: ["/api/expenses", currentMonth, currentYear],
     retry: false,
   });
 
-  // Fetch savings goals
-  const { data: savingsGoals, isLoading: savingsLoading } = useQuery<Array<{
-    id: number;
-    title: string;
-    targetAmount: number;
-    currentAmount: number;
-    deadline?: string;
-  }>>({
-    queryKey: ["/api/savings-goals"],
-    retry: false,
-  });
+  // تم إزالة استعلام أهداف التوفير
   
   // Fetch user data for monthly salary
   const { data: user, isLoading: userLoading } = useQuery<{
@@ -121,10 +112,10 @@ export default function Dashboard() {
               summary={summary?.categorySummary || []} 
               totalAmount={totalExpenses}
               isLoading={summaryLoading}
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              selectedYear={selectedYear}
-              setSelectedYear={setSelectedYear}
+              selectedMonth={currentMonth}
+              setSelectedMonth={() => {/* لا شيء - تم تعطيل تغيير الشهر */}}
+              selectedYear={currentYear}
+              setSelectedYear={() => {/* لا شيء - تم تعطيل تغيير السنة */}}
             />
             
             {/* Expense Limits (moved to here) */}
@@ -153,11 +144,7 @@ export default function Dashboard() {
               <AddExpenseForm />
             </div>
 
-            {/* Savings Goal */}
-            <SavingsGoal 
-              goal={savingsGoals?.[0]} 
-              isLoading={savingsLoading} 
-            />
+            {/* تم إزالة تحدي التوفير بناءً على طلب المستخدم */}
           </div>
         </div>
       </main>
