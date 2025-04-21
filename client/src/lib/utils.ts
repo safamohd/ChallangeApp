@@ -13,7 +13,7 @@ export function formatCurrency(amount: number): string {
     style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount) + ' ر.س';
+  }).format(amount) + ' ﷼';
 }
 
 /**

@@ -151,7 +151,7 @@ export default function AddExpenseForm({ onSuccess }: AddExpenseFormProps) {
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm text-slate-600">المبلغ (ر.س)</FormLabel>
+                  <FormLabel className="text-sm text-slate-600">المبلغ (﷼)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 

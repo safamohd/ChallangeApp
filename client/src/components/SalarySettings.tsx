@@ -120,7 +120,7 @@ export default function SalarySettings() {
                 name="monthlySalary"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm text-slate-600">الراتب الشهري (ر.س)</FormLabel>
+                    <FormLabel className="text-sm text-slate-600">الراتب الشهري (﷼)</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 

@@ -168,7 +168,7 @@ export default function ExpenseLimits({
                                 <Input 
                                   type="number" 
                                   className="w-full border border-slate-300 rounded-lg p-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary" 
-                                  placeholder="المبلغ"
+                                  placeholder="المبلغ ﷼"
                                   {...field} 
                                 />
                               </FormControl>
