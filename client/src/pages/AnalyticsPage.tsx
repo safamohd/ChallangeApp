@@ -59,22 +59,15 @@ const formatDateForApi = (date: Date): string => {
 };
 
 export default function AnalyticsPage() {
-  // استخدام الشهر الحالي فقط بدلاً من القائمة المنسدلة
-  const timeFilter = "month" as TimeFilter;
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
   const [showAddExpense, setShowAddExpense] = useState(false);
   
-  // الحصول على بداية الشهر الحالي
-  const getCurrentMonthStartDate = (): string => {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return formatDateForApi(firstDayOfMonth);
-  };
-  
   // استرجاع بيانات المصاريف
-  const startDate = getCurrentMonthStartDate();
+  const startDate = formatDateForApi(getStartDate(timeFilter));
   const { data: expenses = [], isLoading: expensesLoading } = useQuery<any[]>({
     queryKey: [
       "/api/expenses",
+      timeFilter,
       startDate
     ],
     queryFn: async () => {
@@ -159,12 +152,11 @@ export default function AnalyticsPage() {
     // إنشاء قاموس التواريخ
     const dateMap: Record<string, number> = {};
     
-    // تعيين التواريخ من بداية الشهر الحالي إلى الآن
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // تعيين التواريخ من بداية الفترة إلى الآن
+    const startDate = getStartDate(timeFilter);
     const currentDate = new Date();
     
-    let current = new Date(firstDayOfMonth);
+    let current = new Date(startDate);
     while (current <= currentDate) {
       const dateStr = formatDateForApi(current);
       dateMap[dateStr] = 0;
@@ -273,17 +265,22 @@ export default function AnalyticsPage() {
       </Dialog>
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4">
-        {/* عنوان الصفحة وعرض الشهر والسنة الحالية */}
+        {/* عنوان الصفحة وفلتر التاريخ */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <h1 className="text-2xl font-bold mb-4 md:mb-0">تحليلات المصاريف</h1>
-          <div className="flex items-center justify-center gap-3 font-medium text-primary">
-            <div className="px-4 py-2 bg-primary/10 rounded-md">
-              {new Date().toLocaleDateString('ar-SA', { month: 'long' })}
-            </div>
-            <div className="px-4 py-2 bg-primary/10 rounded-md">
-              {new Date().getFullYear()}
-            </div>
-          </div>
+          <Select
+            value={timeFilter}
+            onValueChange={(value) => setTimeFilter(value as TimeFilter)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="اختر الفترة الزمنية" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">آخر ٧ أيام</SelectItem>
+              <SelectItem value="month">آخر ٣٠ يوم</SelectItem>
+              <SelectItem value="year">السنة الحالية</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* تم إزالة ملخص الإحصائيات العام */}
@@ -460,7 +457,9 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center">
-              المصروفات اليومية للشهر الحالي
+              {timeFilter === "week" || timeFilter === "month"
+                ? "المصروفات اليومية"
+                : "الإنفاق الشهري"}
             </CardTitle>
           </CardHeader>
           <CardContent>
