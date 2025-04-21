@@ -396,21 +396,17 @@ export default function AnalyticsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={importanceData}
-                      layout="vertical"
-                      margin={{ top: 10, right: 40, left: 80, bottom: 20 }}
+                      layout="horizontal"
+                      margin={{ top: 20, right: 20, left: 20, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis 
+                      <XAxis 
                         dataKey="name" 
                         type="category" 
-                        tick={{ fill: "#64748b" }} 
-                        width={120}
-                        tickMargin={20}
-                        orientation="left"
-                        mirror={true}
-                        tickFormatter={(value) => value}
-                        tickSize={0}
+                        tick={{ fill: "#64748b" }}
+                      />
+                      <YAxis 
+                        type="number"
                       />
                       <Tooltip 
                         formatter={(value) => formatCurrency(value as number)} 
@@ -421,12 +417,12 @@ export default function AnalyticsPage() {
                         name="" 
                         isAnimationActive={true}
                         label={(props) => {
-                          const { x, y, width, value } = props;
+                          const { x, y, height, value } = props;
                           return (
                             <text
-                              x={x + width + 5}
-                              y={y + 15}
-                              textAnchor="start"
+                              x={x}
+                              y={y - 10}
+                              textAnchor="middle"
                               fill="#64748b"
                               fontSize={12}
                             >
