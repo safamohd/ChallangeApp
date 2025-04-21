@@ -179,6 +179,33 @@ export default function AnalyticsPage() {
   };
   
   const timeSeriesData = getTimeSeriesData();
+  
+  // تحديد أيام الذروة في الإنفاق
+  const getPeakDays = () => {
+    if (timeSeriesData.length === 0) return [];
+    
+    // حساب متوسط الإنفاق
+    const totalAmount = timeSeriesData.reduce((sum, item) => sum + item.amount, 0);
+    const averageAmount = totalAmount / timeSeriesData.filter(item => item.amount > 0).length || 0;
+    
+    // تعتبر أيام الذروة هي الأيام التي يكون فيها الإنفاق أعلى من 1.5 من المتوسط
+    const threshold = averageAmount * 1.5;
+    
+    // العثور على أيام الذروة
+    return timeSeriesData
+      .filter(item => item.amount > threshold && item.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3) // اختيار أعلى 3 أيام فقط
+      .map(item => {
+        const date = new Date(item.date);
+        return {
+          date: date.toLocaleDateString("ar-SA"),
+          amount: item.amount
+        };
+      });
+  };
+  
+  const peakDays = getPeakDays();
 
   // إعداد نص الملخص
   const getSummaryText = () => {
@@ -256,18 +283,7 @@ export default function AnalyticsPage() {
           </Select>
         </div>
 
-        {/* ملخص الإحصائيات */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="text-lg font-medium text-center">
-              {isLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                getSummaryText()
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* تم إزالة ملخص الإحصائيات العام */}
 
         {/* الرسوم البيانية */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -276,43 +292,57 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle className="text-center">تصنيف المصروفات</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px] flex justify-center items-center">
-              {isLoading ? (
-                <Skeleton className="h-full w-full rounded-lg" />
-              ) : categoryData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      labelLine={true}
-                      label={({ name, percent }) => 
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.color} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value) => formatCurrency(value as number)} 
-                      contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground">
-                  لا توجد بيانات للعرض
-                </p>
+            <CardContent>
+              <div className="h-[300px] flex justify-center items-center mb-4">
+                {isLoading ? (
+                  <Skeleton className="h-full w-full rounded-lg" />
+                ) : categoryData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                        labelLine={true}
+                        label={({ name, percent }) => 
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                      >
+                        {categoryData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.color} 
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value) => formatCurrency(value as number)} 
+                        contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-center text-muted-foreground">
+                    لا توجد بيانات للعرض
+                  </p>
+                )}
+              </div>
+              
+              {/* ملخص مخطط الفئات */}
+              {!isLoading && categoryData.length > 0 && (
+                <div className="text-sm border-t pt-3 text-center">
+                  <p className="font-medium">
+                    الفئة الأعلى إنفاقاً هي: <span className="text-primary">{categoryData[0].name}</span>
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    يُنصح بتقليل الإنفاق في هذه الفئة مستقبلاً.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -322,37 +352,69 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle className="text-center">حسب أهمية المصروف</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px] flex justify-center items-center">
-              {isLoading ? (
-                <Skeleton className="h-full w-full rounded-lg" />
-              ) : totalExpenses > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={importanceData}
-                    layout="vertical"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      tick={{ fill: "#64748b" }} 
-                    />
-                    <Tooltip 
-                      formatter={(value) => formatCurrency(value as number)} 
-                      contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
-                    />
-                    <Bar dataKey="value" name="المبلغ">
-                      {importanceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-center text-muted-foreground">
-                  لا توجد بيانات للعرض
-                </p>
+            <CardContent>
+              <div className="h-[300px] flex justify-center items-center mb-4">
+                {isLoading ? (
+                  <Skeleton className="h-full w-full rounded-lg" />
+                ) : totalExpenses > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={importanceData}
+                      layout="vertical"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        tick={{ fill: "#64748b" }} 
+                      />
+                      <Tooltip 
+                        formatter={(value) => formatCurrency(value as number)} 
+                        contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                      />
+                      <Bar dataKey="value" name="المبلغ">
+                        {importanceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-center text-muted-foreground">
+                    لا توجد بيانات للعرض
+                  </p>
+                )}
+              </div>
+              
+              {/* ملخص مخطط الأهمية */}
+              {!isLoading && totalExpenses > 0 && (
+                <div className="text-sm border-t pt-3 text-center">
+                  {(() => {
+                    // العثور على الفئة ذات أعلى قيمة
+                    const maxImportance = importanceData.reduce((prev, current) => 
+                      (prev.value > current.value) ? prev : current);
+                    
+                    if (maxImportance.name === "مهم") {
+                      return (
+                        <p className="font-medium text-green-600">
+                          معظم مصاريفك على عناصر مهمة، وهذا جيد.
+                        </p>
+                      );
+                    } else {
+                      return (
+                        <>
+                          <p className="font-medium text-red-600">
+                            تحذير: أكبر إنفاق لديك كان في فئة {maxImportance.name}.
+                          </p>
+                          <p className="text-muted-foreground mt-1">
+                            ينصح بمراجعة أولوياتك.
+                          </p>
+                        </>
+                      );
+                    }
+                  })()}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -367,66 +429,84 @@ export default function AnalyticsPage() {
                 : "الإنفاق الشهري"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px] flex justify-center items-center">
-            {isLoading ? (
-              <Skeleton className="h-full w-full rounded-lg" />
-            ) : timeSeriesData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={timeSeriesData}
-                  margin={{
-                    top: 5,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fill: "#64748b" }}
-                    tickFormatter={(value) => {
-                      const date = new Date(value);
-                      if (timeFilter === "year") {
-                        // للسنة نستخدم اسم الشهر
-                        return new Date(value).toLocaleDateString("ar-SA", { month: "short" });
-                      } else {
-                        // لليوم والشهر نستخدم اليوم
-                        return date.getDate().toString();
-                      }
+          <CardContent>
+            <div className="h-[300px] flex justify-center items-center mb-4">
+              {isLoading ? (
+                <Skeleton className="h-full w-full rounded-lg" />
+              ) : timeSeriesData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={timeSeriesData}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
                     }}
-                  />
-                  <YAxis 
-                    tick={{ fill: "#64748b" }} 
-                    tickFormatter={(value) => {
-                      // اختصار الأرقام الكبيرة
-                      if (value >= 1000) {
-                        return `${(value / 1000).toFixed(1)}k`;
-                      }
-                      return value.toString();
-                    }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => formatCurrency(value as number)} 
-                    labelFormatter={(label) => {
-                      return new Date(label).toLocaleDateString("ar-SA");
-                    }}
-                    contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    name="المصروفات"
-                    stroke="#8884d8"
-                    strokeWidth={2}
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-center text-muted-foreground">
-                لا توجد بيانات للعرض
-              </p>
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: "#64748b" }}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        if (timeFilter === "year") {
+                          // للسنة نستخدم اسم الشهر
+                          return new Date(value).toLocaleDateString("ar-SA", { month: "short" });
+                        } else {
+                          // لليوم والشهر نستخدم اليوم
+                          return date.getDate().toString();
+                        }
+                      }}
+                    />
+                    <YAxis 
+                      tick={{ fill: "#64748b" }} 
+                      tickFormatter={(value) => {
+                        // اختصار الأرقام الكبيرة
+                        if (value >= 1000) {
+                          return `${(value / 1000).toFixed(1)}k`;
+                        }
+                        return value.toString();
+                      }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value as number)} 
+                      labelFormatter={(label) => {
+                        return new Date(label).toLocaleDateString("ar-SA");
+                      }}
+                      contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      name="المصروفات"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      activeDot={{ r: 8 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground">
+                  لا توجد بيانات للعرض
+                </p>
+              )}
+            </div>
+            
+            {/* ملخص أيام الذروة */}
+            {!isLoading && peakDays.length > 0 && (
+              <div className="text-sm border-t pt-3 text-center">
+                <p className="font-medium">
+                  ذروة الإنفاق كانت في الأيام/الفترات التالية:
+                </p>
+                <div className="mt-1 text-muted-foreground flex flex-wrap justify-center gap-2">
+                  {peakDays.map((day, index) => (
+                    <span key={index} className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-xs">
+                      {day.date}: <span className="text-primary mr-1">{formatCurrency(day.amount)}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
