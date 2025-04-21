@@ -10,6 +10,7 @@ import AddExpenseForm from "@/components/AddExpenseForm";
 import SavingsGoal from "@/components/SavingsGoal";
 import SalarySettings from "@/components/SalarySettings";
 import ImportanceDistribution from "@/components/ImportanceDistribution";
+import ExpenseLimits from "@/components/ExpenseLimits";
 import { Button } from "@/components/ui/button";
 import { getCurrentMonthName, getCurrentYear } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -145,8 +146,12 @@ export default function Dashboard() {
               <AddExpenseForm />
             </div>
 
-            {/* Salary Settings */}
-            <SalarySettings />
+            {/* Expense Limits */}
+            <ExpenseLimits
+              totalExpenses={totalExpenses}
+              monthlySalary={budget}
+              isLoading={userLoading || summaryLoading}
+            />
 
             {/* Savings Goal */}
             <SavingsGoal 

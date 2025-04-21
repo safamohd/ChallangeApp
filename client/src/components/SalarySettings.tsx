@@ -32,7 +32,11 @@ export default function SalarySettings() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Fetch user data
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading } = useQuery<{
+    id: number;
+    username: string;
+    monthlySalary: number;
+  }>({
     queryKey: ["/api/user"],
   });
 

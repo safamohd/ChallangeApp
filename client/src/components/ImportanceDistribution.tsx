@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import React from "react";
 
 interface ImportanceSummary {
   importance: string;
