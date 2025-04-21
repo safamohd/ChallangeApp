@@ -302,15 +302,14 @@ export default function AnalyticsPage() {
                       <Pie
                         data={categoryData}
                         cx="50%"
-                        cy="50%"
-                        innerRadius={60}
+                        cy="45%"
+                        innerRadius={50}
                         outerRadius={80}
-                        paddingAngle={2}
+                        paddingAngle={5}
                         dataKey="value"
                         nameKey="name"
-                        labelLine={true}
-                        label={({ name, percent }) => 
-                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        label={({ percent }) => 
+                          `${(percent * 100).toFixed(0)}%`
                         }
                       >
                         {categoryData.map((entry, index) => (
@@ -323,6 +322,14 @@ export default function AnalyticsPage() {
                       <Tooltip 
                         formatter={(value) => formatCurrency(value as number)} 
                         contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
+                      />
+                      <Legend 
+                        layout="horizontal" 
+                        verticalAlign="bottom" 
+                        align="center"
+                        iconType="circle"
+                        iconSize={10}
+                        formatter={(value) => <span style={{ fontSize: '0.8rem', marginRight: '5px' }}>{value}</span>}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -361,6 +368,7 @@ export default function AnalyticsPage() {
                     <BarChart
                       data={importanceData}
                       layout="vertical"
+                      margin={{ top: 10, right: 40, left: 10, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" />
@@ -368,16 +376,41 @@ export default function AnalyticsPage() {
                         dataKey="name" 
                         type="category" 
                         tick={{ fill: "#64748b" }} 
+                        width={70}
                       />
                       <Tooltip 
                         formatter={(value) => formatCurrency(value as number)} 
                         contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
                       />
-                      <Bar dataKey="value" name="المبلغ">
+                      <Bar 
+                        dataKey="value" 
+                        name="المبلغ" 
+                        isAnimationActive={true}
+                        label={(props) => {
+                          const { x, y, width, value } = props;
+                          return (
+                            <text
+                              x={x + width + 5}
+                              y={y + 15}
+                              textAnchor="start"
+                              fill="#64748b"
+                              fontSize={12}
+                            >
+                              {formatCurrency(Number(value))}
+                            </text>
+                          );
+                        }}
+                      >
                         {importanceData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Bar>
+                      <Legend 
+                        layout="horizontal" 
+                        verticalAlign="bottom" 
+                        align="center"
+                        wrapperStyle={{ paddingTop: 10 }}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -441,7 +474,7 @@ export default function AnalyticsPage() {
                       top: 5,
                       right: 30,
                       left: 20,
-                      bottom: 5,
+                      bottom: 10,
                     }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -476,6 +509,12 @@ export default function AnalyticsPage() {
                       }}
                       contentStyle={{ textAlign: 'right', direction: 'rtl' }} 
                     />
+                    <Legend 
+                      layout="horizontal" 
+                      verticalAlign="bottom" 
+                      align="center"
+                      wrapperStyle={{ paddingTop: 10 }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="amount"
@@ -483,6 +522,7 @@ export default function AnalyticsPage() {
                       stroke="#8884d8"
                       strokeWidth={2}
                       activeDot={{ r: 8 }}
+                      dot={{ r: 3 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
