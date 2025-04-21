@@ -310,8 +310,8 @@ export default function AnalyticsPage() {
                         nameKey="name"
                         labelLine={{ stroke: "#64748b", strokeWidth: 1, strokeDasharray: "2 2", strokeOpacity: 0.7 }}
                         label={({ percent, x, y, cx, cy }) => {
-                          // زيادة المسافة من الرسم البياني
-                          const radius = 100; // زيادة القيمة لإبعاد النسب عن المخطط
+                          // زيادة المسافة من الرسم البياني بشكل كبير
+                          const radius = 130; // زيادة القيمة لإبعاد النسب عن المخطط أكثر
                           const angleRad = Math.atan2(y - cy, x - cx);
                           const nx = cx + radius * Math.cos(angleRad);
                           const ny = cy + radius * Math.sin(angleRad);
@@ -324,6 +324,8 @@ export default function AnalyticsPage() {
                               dominantBaseline="central"
                               fill="#64748b"
                               fontWeight="500"
+                              fontSize="12"
+                              style={{ filter: 'drop-shadow(0px 0px 2px white)' }}
                             >
                               {`${(percent * 100).toFixed(0)}%`}
                             </text>
@@ -403,7 +405,8 @@ export default function AnalyticsPage() {
                         dataKey="name" 
                         type="category" 
                         tick={{ fill: "#64748b" }} 
-                        width={70}
+                        width={80}
+                        tickMargin={10}
                       />
                       <Tooltip 
                         formatter={(value) => formatCurrency(value as number)} 
@@ -411,7 +414,7 @@ export default function AnalyticsPage() {
                       />
                       <Bar 
                         dataKey="value" 
-                        name="المبلغ" 
+                        name="" 
                         isAnimationActive={true}
                         label={(props) => {
                           const { x, y, width, value } = props;
@@ -432,12 +435,6 @@ export default function AnalyticsPage() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Bar>
-                      <Legend 
-                        layout="horizontal" 
-                        verticalAlign="bottom" 
-                        align="center"
-                        wrapperStyle={{ paddingTop: 10 }}
-                      />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -624,6 +621,32 @@ export default function AnalyticsPage() {
 
       <Footer />
       <MobileNavigation onAddClick={() => setShowAddExpense(true)} />
+
+      {/* نافذة إضافة مصروف جديد */}
+      {showAddExpense && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 lg:hidden">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="font-bold text-lg">إضافة مصروف جديد</h3>
+              <button 
+                className="p-2 rounded-full hover:bg-slate-100"
+                onClick={() => setShowAddExpense(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="p-4">
+              <AddExpenseForm 
+                onSuccess={() => {
+                  setShowAddExpense(false);
+                  queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary"] });
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
