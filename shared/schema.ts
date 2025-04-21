@@ -8,11 +8,13 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  monthlySalary: real("monthly_salary").default(5000),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  monthlySalary: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -55,6 +57,7 @@ export const expenses = pgTable("expenses", {
   date: timestamp("date").notNull(),
   notes: text("notes"),
   userId: integer("user_id").notNull(),
+  importance: text("importance").default("عادي"),
 });
 
 // Create a custom schema for expense inserts with date transformation
@@ -68,6 +71,7 @@ export const insertExpenseSchema = z.object({
   ]),
   notes: z.string().optional(),
   userId: z.number(),
+  importance: z.enum(["مهم", "عادي", "رفاهية"]).default("عادي"),
 });
 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;

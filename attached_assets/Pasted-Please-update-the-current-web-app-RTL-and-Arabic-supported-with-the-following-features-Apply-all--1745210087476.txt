@@ -1,0 +1,54 @@
+Please update the current web app (RTL and Arabic supported) with the following features. Apply all changes in a single checkpoint. Use clean, responsive RTL UI. Use mock data where needed. Do not break existing functionality.
+
+---
+
+1. 🟢 Update Expense Categories:
+Replace the current list of categories with the following Arabic options:
+- مطاعم 🍽️  
+- تسوق 🛒  
+- مواصلات 🚗  
+- ترفيه 🎮  
+- فواتير 💡  
+- تعليم 📚  
+- الصحة 🏥  
+- الاحتياجات المنزلية 🧼  
+- أخرى ❓
+
+Make sure these appear in the dropdown list when adding a new expense, and also reflect in the `category` column in the `expenses` table (PostgreSQL).
+
+---
+
+2. 🟡 Add Expense Importance Field:
+On the "إضافة مصروف" (Add Expense) page, add a new required field labeled "أهمية المصروف" with these options:
+- 🟢 مهم  
+- 🟡 عادي  
+- 🔴 رفاهية
+
+Use radio buttons or a segmented selector. Save the selected value in a new column `importance` in the `expenses` table.
+
+---
+
+3. 🟠 Add Edit Monthly Salary Feature:
+- Next to the monthly salary display on the home page, add a ✏️ icon.
+- On click, show a modal titled “تعديل الراتب الشهري”.
+- Pre-fill the input with the current salary value using Arabic numerals and ﷼ symbol (e.g., "٥٠٠٠ ﷼").
+- Add a "حفظ" button to save the value to shared_preferences or the `user` table in PostgreSQL.
+- Refresh related UI (progress bars, budget summaries) immediately after saving.
+- Include smooth fade-in/fade-out animations for the modal.
+
+---
+
+4. 💰 Replace Currency Symbol:
+Replace all instances of "ر.س" with the official Saudi Riyal symbol: ﷼
+
+---
+
+5. 📄 Improve "عرض الكل" (Show All) Navigation:
+- Make sure the "عرض الكل" button on the home page navigates to a new screen labeled "جميع المصاريف".
+- In this screen, show a full list of expenses.
+- Add a search bar at the top to filter expenses by name or category.
+- Add a new tab labeled "المصاريف" to the bottom navigation bar that opens this screen directly.
+
+---
+
+Ensure RTL layout, Arabic text, and clean responsive design. Do all changes in one checkpoint. Keep all existing functionality.
