@@ -308,9 +308,27 @@ export default function AnalyticsPage() {
                         paddingAngle={5}
                         dataKey="value"
                         nameKey="name"
-                        label={({ percent }) => 
-                          `${(percent * 100).toFixed(0)}%`
-                        }
+                        labelLine={{ stroke: "#64748b", strokeWidth: 1, strokeDasharray: "2 2", strokeOpacity: 0.7 }}
+                        label={({ percent, x, y, cx, cy }) => {
+                          // زيادة المسافة من الرسم البياني
+                          const radius = 100; // زيادة القيمة لإبعاد النسب عن المخطط
+                          const angleRad = Math.atan2(y - cy, x - cx);
+                          const nx = cx + radius * Math.cos(angleRad);
+                          const ny = cy + radius * Math.sin(angleRad);
+                          
+                          return (
+                            <text 
+                              x={nx} 
+                              y={ny} 
+                              textAnchor={x > cx ? "start" : "end"} 
+                              dominantBaseline="central"
+                              fill="#64748b"
+                              fontWeight="500"
+                            >
+                              {`${(percent * 100).toFixed(0)}%`}
+                            </text>
+                          );
+                        }}
                       >
                         {categoryData.map((entry, index) => (
                           <Cell 
@@ -344,10 +362,19 @@ export default function AnalyticsPage() {
               {!isLoading && categoryData.length > 0 && (
                 <div className="text-sm border-t pt-3 text-center">
                   <p className="font-medium">
-                    الفئة الأعلى إنفاقاً هي: <span className="text-primary">{categoryData[0].name}</span>
+                    الفئة الأعلى إنفاقاً هي: <span className="text-primary">{categoryData[0].name}</span> 
+                    <span className="text-primary font-bold mr-1">({(categoryData[0].value / totalExpenses * 100).toFixed(0)}٪)</span>
                   </p>
                   <p className="text-muted-foreground mt-1">
-                    يُنصح بتقليل الإنفاق في هذه الفئة مستقبلاً.
+                    بلغت قيمة الإنفاق في هذه الفئة <span className="text-primary font-medium">{formatCurrency(categoryData[0].value)}</span> من إجمالي <span className="text-primary font-medium">{formatCurrency(totalExpenses)}</span>
+                  </p>
+                  {categoryData.length > 1 && (
+                    <p className="text-muted-foreground mt-1">
+                      الفرق بينها وبين الفئة التالية <span className="text-primary font-medium">{categoryData[1].name}</span> هو <span className="text-primary font-medium">{formatCurrency(categoryData[0].value - categoryData[1].value)}</span>
+                    </p>
+                  )}
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    <span className="text-amber-600">توصية:</span> يُنصح بتقليل الإنفاق في هذه الفئة مستقبلاً لتحسين توازن ميزانيتك.
                   </p>
                 </div>
               )}
@@ -428,20 +455,39 @@ export default function AnalyticsPage() {
                     const maxImportance = importanceData.reduce((prev, current) => 
                       (prev.value > current.value) ? prev : current);
                     
+                    // حساب النسب المئوية
+                    const importantPercent = Math.round((importanceData[0].value / totalExpenses) * 100);
+                    const normalPercent = Math.round((importanceData[1].value / totalExpenses) * 100);
+                    const luxuryPercent = Math.round((importanceData[2].value / totalExpenses) * 100);
+                    
                     if (maxImportance.name === "مهم") {
                       return (
-                        <p className="font-medium text-green-600">
-                          معظم مصاريفك على عناصر مهمة، وهذا جيد.
-                        </p>
+                        <>
+                          <p className="font-medium text-green-600">
+                            معظم مصاريفك على عناصر مهمة (<span className="font-bold">{importantPercent}٪</span>)، وهذا جيد.
+                          </p>
+                          <p className="text-muted-foreground mt-1">
+                            استمر في الحفاظ على هذا التوازن مع تخفيض نسبة الرفاهية (<span className="text-primary font-medium">{luxuryPercent}٪</span>).
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-xs">
+                            <span className="text-green-600">✓</span> توزيع ميزانيتك متوازن. 
+                          </p>
+                        </>
                       );
                     } else {
+                      const warningCategory = maxImportance.name === "عادي" ? "العادية" : "الرفاهية";
+                      const warningPercent = maxImportance.name === "عادي" ? normalPercent : luxuryPercent;
+                      
                       return (
                         <>
                           <p className="font-medium text-red-600">
-                            تحذير: أكبر إنفاق لديك كان في فئة {maxImportance.name}.
+                            تحذير: أكبر إنفاق لديك كان في فئة {maxImportance.name} (<span className="font-bold">{warningPercent}٪</span>).
                           </p>
                           <p className="text-muted-foreground mt-1">
-                            ينصح بمراجعة أولوياتك.
+                            نسبة الإنفاق على العناصر المهمة (<span className="text-primary">{importantPercent}٪</span>) أقل من المصاريف {warningCategory}.
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-xs">
+                            <span className="text-amber-600">توصية:</span> يُنصح بمراجعة أولوياتك وإعادة توزيع الميزانية لزيادة نسبة العناصر المهمة على حساب فئة {maxImportance.name}.
                           </p>
                         </>
                       );
@@ -546,6 +592,30 @@ export default function AnalyticsPage() {
                     </span>
                   ))}
                 </div>
+                
+                {/* تفاصيل إضافية عن نمط الإنفاق */}
+                {(() => {
+                  // حساب متوسط الإنفاق للأيام التي بها إنفاق فقط
+                  const daysWithExpenses = timeSeriesData.filter(day => day.amount > 0);
+                  const avgExpense = daysWithExpenses.length 
+                    ? daysWithExpenses.reduce((sum, day) => sum + day.amount, 0) / daysWithExpenses.length 
+                    : 0;
+                    
+                  // حساب نسبة الارتفاع في أيام الذروة
+                  const peakAverage = peakDays.reduce((sum, day) => sum + day.amount, 0) / peakDays.length;
+                  const peakPercentageAboveAvg = avgExpense ? Math.round((peakAverage / avgExpense - 1) * 100) : 0;
+                  
+                  return (
+                    <>
+                      <p className="text-muted-foreground mt-2">
+                        معدل الإنفاق في أيام الذروة يزيد عن المتوسط بنسبة <span className="text-primary font-medium">{peakPercentageAboveAvg}٪</span>
+                      </p>
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        <span className="text-amber-600">توصية:</span> حاول تقسيم مشترياتك الكبيرة على عدة أيام لتجنب الارتفاع المفاجئ في المصاريف.
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             )}
           </CardContent>
