@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 // تعريف مخططات التحقق
 const loginSchema = z.object({
-  username: z.string().min(3, { message: "يجب أن يحتوي اسم المستخدم على الأقل 3 أحرف" }),
+  email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(6, { message: "يجب أن تحتوي كلمة المرور على الأقل 6 أحرف" }),
 });
 
@@ -41,7 +41,7 @@ export default function AuthPage() {
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -145,13 +145,14 @@ export default function AuthPage() {
                     <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                       <FormField
                         control={loginForm.control}
-                        name="username"
+                        name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>اسم المستخدم</FormLabel>
+                            <FormLabel>البريد الإلكتروني</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="أدخل اسم المستخدم"
+                                type="email"
+                                placeholder="أدخل البريد الإلكتروني"
                                 {...field}
                                 disabled={isLoading}
                               />
