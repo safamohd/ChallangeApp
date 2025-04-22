@@ -14,16 +14,7 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow">
-      <div className="max-w-5xl mx-auto p-4">
-        {/* رسالة الترحيب بالمستخدم */}
-        {user && (
-          <div className="mb-3 text-right">
-            <h2 className="text-lg font-bold text-gray-800">
-              مرحباً بك، {user.username}
-            </h2>
-          </div>
-        )}
-        
+      <div className="max-w-5xl mx-auto p-4">        
         <div className="flex justify-between items-center">
           <div>
             {user && (
