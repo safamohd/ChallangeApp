@@ -44,11 +44,11 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
         </button>
         
         <button 
-          className={`flex flex-col items-center ${location === '/settings' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/settings')}
+          className={`flex flex-col items-center ${location === '/profile' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/profile')}
         >
-          <i className="fas fa-cog text-lg"></i>
-          <span className="text-xs mt-1">الإعدادات</span>
+          <i className="fas fa-user text-lg"></i>
+          <span className="text-xs mt-1">الملف الشخصي</span>
         </button>
       </div>
     </div>
