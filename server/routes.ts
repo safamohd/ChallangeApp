@@ -64,7 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Expenses API
-  apiRouter.get("/expenses", async (req: Request, res: Response) => {
+  apiRouter.get("/expenses", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = 1; // Using fixed user ID for now
       
@@ -110,9 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.post("/expenses", async (req: Request, res: Response) => {
+  apiRouter.post("/expenses", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using fixed user ID for now
+      const userId = req.user!.id;
       
       // Add userId to the request body
       const expenseData = { ...req.body, userId };
@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.put("/expenses/:id", async (req: Request, res: Response) => {
+  apiRouter.put("/expenses/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.delete("/expenses/:id", async (req: Request, res: Response) => {
+  apiRouter.delete("/expenses/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -185,9 +185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Expense summary API
-  apiRouter.get("/expenses/summary", async (req: Request, res: Response) => {
+  apiRouter.get("/expenses/summary", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using fixed user ID for now
+      const userId = req.user!.id;
       
       // Query parameters for filtering by month and year
       const month = req.query.month !== undefined 
@@ -289,9 +289,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Savings Goals API
-  apiRouter.get("/savings-goals", async (_req: Request, res: Response) => {
+  apiRouter.get("/savings-goals", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using fixed user ID for now
+      const userId = req.user!.id;
       const goals = await storage.getSavingsGoals(userId);
       res.json(goals);
     } catch (error) {
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.get("/savings-goals/:id", async (req: Request, res: Response) => {
+  apiRouter.get("/savings-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const goal = await storage.getSavingsGoalById(id);
@@ -320,9 +320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.post("/savings-goals", async (req: Request, res: Response) => {
+  apiRouter.post("/savings-goals", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using fixed user ID for now
+      const userId = req.user!.id;
       
       // Add userId to the request body
       const goalData = { ...req.body, userId };
@@ -341,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.put("/savings-goals/:id", async (req: Request, res: Response) => {
+  apiRouter.put("/savings-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Sub-goals API
-  apiRouter.post("/sub-goals", async (req: Request, res: Response) => {
+  apiRouter.post("/sub-goals", isAuthenticated, async (req: Request, res: Response) => {
     try {
       // Validate the request body
       const validatedData = insertSubGoalSchema.parse(req.body);
