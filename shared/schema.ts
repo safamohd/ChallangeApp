@@ -6,10 +6,12 @@ import { z } from "zod";
 // Users schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  username: text("username").notNull(),
   password: text("password").notNull(),
-  email: text("email").unique(),
-  monthlySalary: real("monthly_salary").default(5000),
+  email: text("email").notNull().unique(),  // البريد الإلكتروني هو المعرف الفريد الوحيد
+  monthlySalary: real("monthly_salary").default(0),  // الراتب الشهري
+  monthlyBudget: real("monthly_budget").default(0),  // الميزانية الشهرية
+  fullName: text("full_name").default(""),  // الاسم الكامل للمستخدم
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -17,6 +19,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   email: true,
   monthlySalary: true,
+  monthlyBudget: true,
+  fullName: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

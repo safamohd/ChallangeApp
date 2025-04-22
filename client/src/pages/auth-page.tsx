@@ -21,9 +21,14 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   username: z.string().min(3, { message: "يجب أن يحتوي اسم المستخدم على الأقل 3 أحرف" }),
+  fullName: z.string().optional(),
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(6, { message: "يجب أن تحتوي كلمة المرور على الأقل 6 أحرف" }),
   confirmPassword: z.string().min(6, { message: "يجب أن تحتوي كلمة المرور على الأقل 6 أحرف" }),
+  monthlyBudget: z.union([
+    z.number(),
+    z.string().transform((val) => val === "" ? 0 : parseFloat(val))
+  ]).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "كلمتا المرور غير متطابقتين",
   path: ["confirmPassword"],
@@ -60,9 +65,11 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
+      fullName: "",
       email: "",
       password: "",
       confirmPassword: "",
+      monthlyBudget: 0,
     },
   });
 
@@ -233,6 +240,24 @@ export default function AuthPage() {
                       
                       <FormField
                         control={registerForm.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>الاسم الكامل</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="أدخل الاسم الكامل"
+                                {...field}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
                         name="confirmPassword"
                         render={({ field }) => (
                           <FormItem>
@@ -241,6 +266,25 @@ export default function AuthPage() {
                               <Input
                                 type="password"
                                 placeholder="أعد إدخال كلمة المرور"
+                                {...field}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="monthlyBudget"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>الميزانية الشهرية (اختياري)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="أدخل ميزانيتك الشهرية"
                                 {...field}
                                 disabled={isLoading}
                               />
