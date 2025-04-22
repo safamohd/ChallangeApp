@@ -61,28 +61,9 @@ export default function AuthPage() {
   const onLogin = async (values: LoginFormValues) => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("POST", "/api/login", values);
-      
-      if (response.ok) {
-        toast({
-          title: "تم تسجيل الدخول بنجاح",
-          description: "مرحبًا بعودتك!",
-        });
-        setLocation("/");
-      } else {
-        const data = await response.json();
-        toast({
-          title: "خطأ في تسجيل الدخول",
-          description: data.error || "فشل تسجيل الدخول. الرجاء التحقق من بيانات الاعتماد الخاصة بك.",
-          variant: "destructive",
-        });
-      }
+      await loginMutation.mutateAsync(values);
     } catch (error) {
-      toast({
-        title: "خطأ في تسجيل الدخول",
-        description: "حدث خطأ أثناء محاولة تسجيل الدخول. الرجاء المحاولة مرة أخرى.",
-        variant: "destructive",
-      });
+      // الخطأ معالج في loginMutation
     } finally {
       setIsLoading(false);
     }

@@ -7,6 +7,7 @@ import {
 import { User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 type AuthContextType = {
   user: User | null;
@@ -18,7 +19,7 @@ type AuthContextType = {
 };
 
 type LoginData = {
-  username: string;
+  email: string;
   password: string;
 };
 
@@ -32,6 +33,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [_, setLocation] = useLocation();
   const {
     data: user,
     error,
@@ -52,6 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "تم تسجيل الدخول بنجاح",
+        description: "مرحبًا بعودتك!"
+      });
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -73,6 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "تم إنشاء الحساب بنجاح",
+        description: "تم تسجيل دخولك تلقائيًا"
+      });
+      setLocation("/");
     },
     onError: (error: Error) => {
       toast({
@@ -93,6 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      toast({
+        title: "تم تسجيل الخروج بنجاح"
+      });
+      setLocation("/auth");
     },
     onError: (error: Error) => {
       toast({
