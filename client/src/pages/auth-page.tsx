@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
+import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -36,6 +37,14 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
+  const { user, loginMutation, registerMutation } = useAuth();
+  
+  // إذا كان المستخدم مسجل الدخول بالفعل، توجيهه للصفحة الرئيسية
+  React.useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   // نموذج تسجيل الدخول
   const loginForm = useForm<LoginFormValues>({
@@ -76,28 +85,9 @@ export default function AuthPage() {
       // إزالة حقل confirmPassword قبل الإرسال
       const { confirmPassword, ...registrationData } = values;
       
-      const response = await apiRequest("POST", "/api/register", registrationData);
-      
-      if (response.ok) {
-        toast({
-          title: "تم إنشاء الحساب بنجاح",
-          description: "تم تسجيل دخولك تلقائيًا.",
-        });
-        setLocation("/");
-      } else {
-        const data = await response.json();
-        toast({
-          title: "خطأ في إنشاء الحساب",
-          description: data.error || "فشل إنشاء الحساب. الرجاء المحاولة مرة أخرى.",
-          variant: "destructive",
-        });
-      }
+      await registerMutation.mutateAsync(registrationData);
     } catch (error) {
-      toast({
-        title: "خطأ في إنشاء الحساب",
-        description: "حدث خطأ أثناء محاولة إنشاء الحساب. الرجاء المحاولة مرة أخرى.",
-        variant: "destructive",
-      });
+      // الخطأ معالج في registerMutation
     } finally {
       setIsLoading(false);
     }
