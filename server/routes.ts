@@ -406,6 +406,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // PUT /api/user/profile - Update user's profile information
+  apiRouter.put("/user/profile", isAuthenticated, async (req: Request, res: Response) => {
+    const updateSchema = z.object({
+      fullName: z.string().optional(),
+      monthlyBudget: z.number().optional()
+    });
+    
+    try {
+      const data = updateSchema.parse(req.body);
+      
+      if (Object.keys(data).length === 0) {
+        return res.status(400).json({ error: "لم يتم توفير أي بيانات للتحديث" });
+      }
+      
+      const updatedUser = await storage.updateUserProfile(req.user!.id, data);
+      
+      // Don't send the password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "بيانات غير صالحة", details: error.errors });
+      }
+      res.status(500).json({ error: "حدث خطأ أثناء تحديث الملف الشخصي" });
+    }
+  });
+  
   // Register the API router
   app.use("/api", apiRouter);
 

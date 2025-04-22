@@ -15,6 +15,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserSalary(id: number, monthlySalary: number): Promise<User>;
+  updateUserProfile(id: number, profileData: { fullName?: string; monthlyBudget?: number }): Promise<User>;
   
   // Category operations
   getCategories(): Promise<Category[]>;
@@ -75,6 +76,25 @@ export class DatabaseStorage implements IStorage {
     
     if (!updatedUser) {
       throw new Error(`User with id ${id} not found`);
+    }
+    
+    return updatedUser;
+  }
+  
+  async updateUserProfile(id: number, profileData: { fullName?: string; monthlyBudget?: number }): Promise<User> {
+    // تحقق من وجود المستخدم قبل التحديث
+    const user = await this.getUser(id);
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    
+    const [updatedUser] = await db.update(users)
+      .set(profileData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updatedUser) {
+      throw new Error(`Failed to update user profile for id ${id}`);
     }
     
     return updatedUser;
@@ -226,7 +246,10 @@ export class DatabaseStorage implements IStorage {
       const user = await this.createUser({ 
         username: "demo", 
         password: "password",
-        monthlySalary: 10000 // Default monthly salary
+        email: "demo@example.com", // إضافة البريد الإلكتروني
+        monthlySalary: 10000, // الراتب الشهري الافتراضي
+        fullName: "مستخدم تجريبي", // اسم المستخدم الكامل الافتراضي
+        monthlyBudget: 8000 // الميزانية الشهرية الافتراضية
       });
       
       // Create a default savings goal
