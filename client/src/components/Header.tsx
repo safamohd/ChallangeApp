@@ -19,7 +19,7 @@ export default function Header() {
         {user && (
           <div className="mb-3 text-right">
             <h2 className="text-lg font-bold text-gray-800">
-              مرحباً بك، {user.fullName || user.username}
+              مرحباً بك، {user.username}
             </h2>
           </div>
         )}

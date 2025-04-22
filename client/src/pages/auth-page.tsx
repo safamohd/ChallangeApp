@@ -21,7 +21,6 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   username: z.string().min(3, { message: "يجب أن يحتوي اسم المستخدم على الأقل 3 أحرف" }),
-  fullName: z.string().optional(),
   email: z.string().email({ message: "الرجاء إدخال بريد إلكتروني صالح" }),
   password: z.string().min(6, { message: "يجب أن تحتوي كلمة المرور على الأقل 6 أحرف" }),
   confirmPassword: z.string().min(6, { message: "يجب أن تحتوي كلمة المرور على الأقل 6 أحرف" }),
@@ -65,7 +64,6 @@ export default function AuthPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
-      fullName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -229,24 +227,6 @@ export default function AuthPage() {
                               <Input
                                 type="password"
                                 placeholder="أدخل كلمة المرور"
-                                {...field}
-                                disabled={isLoading}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={registerForm.control}
-                        name="fullName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>الاسم الكامل</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="أدخل الاسم الكامل"
                                 {...field}
                                 disabled={isLoading}
                               />
