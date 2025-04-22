@@ -108,7 +108,7 @@ export function setupAuth(app: Express) {
 
   // مسار تسجيل الدخول
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: Error | null, user: Express.User | false, info: any) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });

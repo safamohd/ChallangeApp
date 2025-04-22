@@ -6,13 +6,17 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import AllExpensesPage from "@/pages/AllExpensesPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import AuthPage from "@/pages/auth-page";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AuthProvider } from "@/hooks/use-auth";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/expenses" component={AllExpensesPage} />
-      <Route path="/analytics" component={AnalyticsPage} />
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/expenses" component={AllExpensesPage} />
+      <ProtectedRoute path="/analytics" component={AnalyticsPage} />
+      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -21,8 +25,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
