@@ -77,12 +77,18 @@ export default function AnalyticsPage() {
       return res.json();
     },
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // استرجاع بيانات الفئات
   const { data: categories = [], isLoading: categoriesLoading } = useQuery<any[]>({
     queryKey: ["/api/categories"],
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // استرجاع بيانات المستخدم
@@ -93,6 +99,9 @@ export default function AnalyticsPage() {
   }>({
     queryKey: ["/api/user"],
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // التحميل

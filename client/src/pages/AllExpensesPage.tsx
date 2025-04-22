@@ -31,10 +31,16 @@ export default function AllExpensesPage() {
   // Fetch expenses and categories
   const { data: expenses = [], isLoading: isLoadingExpenses } = useQuery<Expense[]>({
     queryKey: ["/api/expenses"],
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
   
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
   
   // Filter expenses based on search query, category and importance
