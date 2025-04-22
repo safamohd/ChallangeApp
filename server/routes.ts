@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Expenses API
   apiRouter.get("/expenses", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using fixed user ID for now
+      const userId = req.user!.id; // استخدام معرف المستخدم الحالي
       
       // Query parameters for filtering by month and year
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
@@ -142,11 +142,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.put("/expenses/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user!.id;
       
       // Get the existing expense to verify it exists and belongs to the user
       const existingExpense = await storage.getExpenseById(id);
       if (!existingExpense) {
         return res.status(404).json({ message: "المصروف غير موجود" });
+      }
+      
+      // التحقق من أن المصروف ينتمي للمستخدم الحالي
+      if (existingExpense.userId !== userId) {
+        return res.status(403).json({ message: "ليس لديك صلاحية تعديل هذا المصروف" });
       }
       
       // Validate the request body
@@ -166,11 +172,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.delete("/expenses/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user!.id;
       
       // Get the existing expense to verify it exists and belongs to the user
       const existingExpense = await storage.getExpenseById(id);
       if (!existingExpense) {
         return res.status(404).json({ message: "المصروف غير موجود" });
+      }
+      
+      // التحقق من أن المصروف ينتمي للمستخدم الحالي
+      if (existingExpense.userId !== userId) {
+        return res.status(403).json({ message: "ليس لديك صلاحية حذف هذا المصروف" });
       }
       
       const deleted = await storage.deleteExpense(id);
@@ -344,11 +356,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   apiRouter.put("/savings-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user!.id;
       
       // Get the existing goal to verify it exists and belongs to the user
       const existingGoal = await storage.getSavingsGoalById(id);
       if (!existingGoal) {
         return res.status(404).json({ message: "هدف التوفير غير موجود" });
+      }
+      
+      // التحقق من أن هدف التوفير ينتمي للمستخدم الحالي
+      if (existingGoal.userId !== userId) {
+        return res.status(403).json({ message: "ليس لديك صلاحية تعديل هذا الهدف" });
       }
       
       // Validate the request body
@@ -368,6 +386,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sub-goals API
   apiRouter.post("/sub-goals", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = req.user!.id;
+      
       // Validate the request body
       const validatedData = insertSubGoalSchema.parse(req.body);
       
@@ -375,6 +395,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parentGoal = await storage.getSavingsGoalById(validatedData.goalId);
       if (!parentGoal) {
         return res.status(404).json({ message: "هدف التوفير الرئيسي غير موجود" });
+      }
+      
+      // التحقق من أن هدف التوفير الرئيسي ينتمي للمستخدم الحالي
+      if (parentGoal.userId !== userId) {
+        return res.status(403).json({ message: "ليس لديك صلاحية إضافة أهداف فرعية لهذا الهدف" });
       }
       
       const newSubGoal = await storage.createSubGoal(validatedData);
@@ -388,9 +413,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  apiRouter.put("/sub-goals/:id", async (req: Request, res: Response) => {
+  apiRouter.put("/sub-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user!.id;
+      
+      // الحصول على الهدف الفرعي
+      const subGoal = await storage.getSubGoalById(id);
+      if (!subGoal) {
+        return res.status(404).json({ message: "الهدف الفرعي غير موجود" });
+      }
+      
+      // الحصول على الهدف الرئيسي للتحقق من الملكية
+      const parentGoal = await storage.getSavingsGoalById(subGoal.goalId);
+      if (!parentGoal) {
+        return res.status(404).json({ message: "هدف التوفير الرئيسي غير موجود" });
+      }
+      
+      // التحقق من أن هدف التوفير الرئيسي ينتمي للمستخدم الحالي
+      if (parentGoal.userId !== userId) {
+        return res.status(403).json({ message: "ليس لديك صلاحية تعديل هذا الهدف الفرعي" });
+      }
       
       // Validate the request body
       const validatedData = insertSubGoalSchema.partial().parse(req.body);

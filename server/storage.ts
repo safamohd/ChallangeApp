@@ -38,6 +38,7 @@ export interface IStorage {
   
   // Sub-goal operations
   getSubGoalsByGoalId(goalId: number): Promise<SubGoal[]>;
+  getSubGoalById(id: number): Promise<SubGoal | undefined>;
   createSubGoal(subGoal: InsertSubGoal): Promise<SubGoal>;
   updateSubGoal(id: number, subGoal: Partial<InsertSubGoal>): Promise<SubGoal>;
 }
@@ -203,6 +204,11 @@ export class DatabaseStorage implements IStorage {
     return db.select()
       .from(subGoals)
       .where(eq(subGoals.goalId, goalId));
+  }
+  
+  async getSubGoalById(id: number): Promise<SubGoal | undefined> {
+    const [subGoal] = await db.select().from(subGoals).where(eq(subGoals.id, id));
+    return subGoal || undefined;
   }
   
   async createSubGoal(insertSubGoal: InsertSubGoal): Promise<SubGoal> {
