@@ -1,33 +1,28 @@
-import express, { type Express, Request, Response } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertExpenseSchema, insertSavingsGoalSchema, insertSubGoalSchema } from "@shared/schema";
+import { setupAuth } from "./auth";
+
+// وظيفة middleware للتأكد من أن المستخدم مسجل الدخول
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "يجب تسجيل الدخول للوصول إلى هذه الخدمة" });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // إعداد المصادقة
+  setupAuth(app);
   // prefix all routes with /api
   const apiRouter = express.Router();
   
-  // User API
-  apiRouter.get("/user", async (_req: Request, res: Response) => {
-    try {
-      // For now, we'll use a mock user with ID 1 for demonstration
-      const user = await storage.getUser(1);
-      if (!user) {
-        return res.status(404).json({ message: "المستخدم غير موجود" });
-      }
-      
-      // Don't send the password
-      const { password, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "فشل في جلب بيانات المستخدم" });
-    }
-  });
-
+  // User API - هذه النقطة مُفعّلة بالفعل عن طريق ملف auth.ts
+  
   // PUT /api/user/salary - Update user's monthly salary
-  apiRouter.put("/user/salary", async (req: Request, res: Response) => {
+  apiRouter.put("/user/salary", isAuthenticated, async (req: Request, res: Response) => {
     const { monthlySalary } = req.body;
     
     if (!monthlySalary || monthlySalary <= 0) {
@@ -35,8 +30,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      // For now, we'll use a mock user with ID 1 for demonstration
-      const userId = 1;
+      const userId = req.user!.id;
       const updatedUser = await storage.updateUserSalary(userId, monthlySalary);
       
       // Don't send the password
@@ -49,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Categories API
-  apiRouter.get("/categories", async (_req: Request, res: Response) => {
+  apiRouter.get("/categories", isAuthenticated, async (_req: Request, res: Response) => {
     try {
       const categories = await storage.getCategories();
       res.json(categories);
@@ -59,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Add new category
-  apiRouter.post("/categories", async (req: Request, res: Response) => {
+  apiRouter.post("/categories", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const newCategory = await storage.createCategory(req.body);
       res.status(201).json(newCategory);
