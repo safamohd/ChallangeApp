@@ -42,6 +42,9 @@ export default function Dashboard() {
   }>({
     queryKey: ["/api/expenses/summary", currentMonth, currentYear],
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // Fetch expense data
@@ -56,6 +59,9 @@ export default function Dashboard() {
   }>>({
     queryKey: ["/api/expenses", currentMonth, currentYear],
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // تم إزالة استعلام أهداف التوفير
@@ -68,6 +74,9 @@ export default function Dashboard() {
   }>({
     queryKey: ["/api/user"],
     retry: false,
+    refetchOnMount: true, // إعادة تحميل البيانات في كل مرة يتم فيها تحميل المكون
+    refetchOnWindowFocus: true, // إعادة تحميل البيانات عند العودة للنافذة
+    staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
   // Calculate budget and remaining amount

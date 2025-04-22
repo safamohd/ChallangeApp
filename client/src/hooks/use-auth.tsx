@@ -54,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
+      // مسح جميع البيانات المخزنة مؤقتاً من المستخدم السابق
+      queryClient.clear();
+      // تعيين بيانات المستخدم الجديد
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "تم تسجيل الدخول بنجاح",
@@ -80,6 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: User) => {
+      // مسح أي بيانات مخزنة مؤقتاً
+      queryClient.clear();
+      // تعيين بيانات المستخدم الجديد
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "تم إنشاء الحساب بنجاح",
@@ -105,6 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
+      // مسح جميع البيانات المخزنة مؤقتاً
+      queryClient.clear();
+      // إعادة تعيين بيانات المستخدم إلى null
       queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "تم تسجيل الخروج بنجاح"
