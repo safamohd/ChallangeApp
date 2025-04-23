@@ -22,10 +22,11 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 
 // إنشاء إشعار تجاوز حد الإنفاق (تحذير)
 async function createSpendingWarningNotification(userId: number, currentSpending: number, monthlyBudget: number) {
-  const warningLimit = monthlyBudget * 0.8; // 80% من الميزانية الشهرية
+  const warningLimit = monthlyBudget * 0.7; // 70% من الميزانية الشهرية
+  const dangerLimit = monthlyBudget * 0.9; // 90% من الميزانية الشهرية
   
   // التحقق مما إذا كنا بحاجة لإنشاء إشعار
-  if (currentSpending >= warningLimit && currentSpending < monthlyBudget) {
+  if (currentSpending >= warningLimit && currentSpending < dangerLimit) {
     // الحصول على جميع إشعارات التحذير للشهر الحالي
     const currentDate = new Date();
     const notifications = await storage.getNotifications(userId);
@@ -59,7 +60,8 @@ async function createSpendingWarningNotification(userId: number, currentSpending
 
 // إنشاء إشعار تجاوز حد الإنفاق (خطر)
 async function createSpendingDangerNotification(userId: number, currentSpending: number, monthlyBudget: number) {
-  if (currentSpending >= monthlyBudget) {
+  const dangerLimit = monthlyBudget * 0.9; // 90% من الميزانية الشهرية
+  if (currentSpending >= dangerLimit) {
     // الحصول على جميع إشعارات الخطر للشهر الحالي
     const currentDate = new Date();
     const notifications = await storage.getNotifications(userId);
@@ -79,8 +81,8 @@ async function createSpendingDangerNotification(userId: number, currentSpending:
       await storage.createNotification({
         userId,
         type: 'spending_limit_danger',
-        title: 'تحذير: تجاوز الميزانية الشهرية',
-        message: `لقد تجاوزت مصاريفك الميزانية الشهرية بنسبة ${Math.round(((currentSpending - monthlyBudget) / monthlyBudget) * 100)}%.`,
+        title: 'تحذير: اقتراب من تجاوز الميزانية',
+        message: `لقد وصلت مصاريفك إلى ${Math.round((currentSpending / monthlyBudget) * 100)}% من الميزانية الشهرية.`,
         data: JSON.stringify({
           currentSpending,
           monthlyBudget,
