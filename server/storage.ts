@@ -41,6 +41,14 @@ export interface IStorage {
   getSubGoalById(id: number): Promise<SubGoal | undefined>;
   createSubGoal(subGoal: InsertSubGoal): Promise<SubGoal>;
   updateSubGoal(id: number, subGoal: Partial<InsertSubGoal>): Promise<SubGoal>;
+
+  // Notification operations
+  getNotifications(userId: number): Promise<Notification[]>;
+  getNotificationById(id: number): Promise<Notification | undefined>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification>;
+  markAllNotificationsAsRead(userId: number): Promise<void>;
+  countUnreadNotifications(userId: number): Promise<number>;
 }
 
 import { db } from "./db";
@@ -227,6 +235,58 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedSubGoal;
+  }
+
+  // Notification operations
+  async getNotifications(userId: number): Promise<Notification[]> {
+    return db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt)); // أحدث الإشعارات أولاً
+  }
+
+  async getNotificationById(id: number): Promise<Notification | undefined> {
+    const [notification] = await db.select()
+      .from(notifications)
+      .where(eq(notifications.id, id));
+    return notification || undefined;
+  }
+
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    const [notification] = await db.insert(notifications)
+      .values(insertNotification)
+      .returning();
+    return notification;
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification> {
+    const [updatedNotification] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    
+    if (!updatedNotification) {
+      throw new Error(`Notification with id ${id} not found`);
+    }
+    
+    return updatedNotification;
+  }
+
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async countUnreadNotifications(userId: number): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    
+    return result[0]?.count || 0;
   }
 
   // Seed database with initial data

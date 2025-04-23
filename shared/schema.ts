@@ -1,7 +1,17 @@
-import { pgTable, text, serial, integer, timestamp, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, real, boolean, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// إنشاء نوع مخصص للإشعارات
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'spending_limit_warning', // تحذير عند تجاوز الحد المسموح للإنفاق
+  'spending_limit_danger',  // خطر عند تجاوز الحد الخطر للإنفاق
+  'luxury_spending',        // تحذير عند زيادة الإنفاق على الرفاهية
+  'essential_decrease',     // إشعار عند انخفاض الإنفاق على الأساسيات
+  'weekly_analysis',        // تحليل أسبوعي
+  'expense_trend'           // اتجاه الإنفاق
+]);
 
 // Users schema
 export const users = pgTable("users", {
@@ -30,6 +40,7 @@ export type User = typeof users.$inferSelect;
 export const usersRelations = relations(users, ({ many }) => ({
   expenses: many(expenses),
   savingsGoals: many(savingsGoals),
+  notifications: many(notifications),
 }));
 
 // Expense Categories
@@ -149,5 +160,36 @@ export const subGoalsRelations = relations(subGoals, ({ one }) => ({
   savingsGoal: one(savingsGoals, {
     fields: [subGoals.goalId],
     references: [savingsGoals.id],
+  }),
+}));
+
+// إشعارات النظام
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // المستخدم الذي يتعلق به الإشعار
+  type: notificationTypeEnum("type").notNull(), // نوع الإشعار
+  title: text("title").notNull(), // عنوان الإشعار
+  message: text("message").notNull(), // محتوى الإشعار
+  createdAt: timestamp("created_at").defaultNow().notNull(), // تاريخ إنشاء الإشعار
+  isRead: boolean("is_read").default(false).notNull(), // هل تم قراءة الإشعار؟
+  data: text("data"), // بيانات إضافية متعلقة بالإشعار (بتنسيق JSON)
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).pick({
+  userId: true,
+  type: true,
+  title: true,
+  message: true,
+  data: true
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// علاقات الإشعارات
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
   }),
 }));
