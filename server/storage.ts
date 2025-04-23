@@ -3,7 +3,8 @@ import {
   categories, type Category, type InsertCategory,
   expenses, type Expense, type InsertExpense,
   savingsGoals, type SavingsGoal, type InsertSavingsGoal,
-  subGoals, type SubGoal, type InsertSubGoal
+  subGoals, type SubGoal, type InsertSubGoal,
+  notifications, type Notification, type InsertNotification
 } from "@shared/schema";
 // modify the interface with any CRUD methods
 // you might need
