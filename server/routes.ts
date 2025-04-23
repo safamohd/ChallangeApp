@@ -24,36 +24,71 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 async function createSpendingWarningNotification(userId: number, currentSpending: number, monthlyBudget: number) {
   const warningLimit = monthlyBudget * 0.8; // 80% من الميزانية الشهرية
   
+  // التحقق مما إذا كنا بحاجة لإنشاء إشعار
   if (currentSpending >= warningLimit && currentSpending < monthlyBudget) {
-    await storage.createNotification({
-      userId,
-      type: 'spending_limit_warning',
-      title: 'تنبيه: اقتراب من حد الميزانية',
-      message: `لقد وصلت مصاريفك إلى ${Math.round((currentSpending / monthlyBudget) * 100)}% من الميزانية الشهرية المحددة.`,
-      data: JSON.stringify({
-        currentSpending,
-        monthlyBudget,
-        percentage: (currentSpending / monthlyBudget) * 100
-      })
+    // الحصول على جميع إشعارات التحذير للشهر الحالي
+    const currentDate = new Date();
+    const notifications = await storage.getNotifications(userId);
+    
+    // التحقق مما إذا كان هناك إشعار تحذير حالي لهذا الشهر
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const existingWarning = notifications.find(n => {
+      if (n.type !== 'spending_limit_warning') return false;
+      const notifDate = new Date(n.createdAt);
+      return notifDate.getMonth() === currentMonth && notifDate.getFullYear() === currentYear;
     });
+
+    // إذا لم يكن هناك إشعار مسبق، قم بإنشاء واحد جديد
+    if (!existingWarning) {
+      console.log("إنشاء إشعار تحذير حد الإنفاق جديد");
+      await storage.createNotification({
+        userId,
+        type: 'spending_limit_warning',
+        title: 'تنبيه: اقتراب من حد الميزانية',
+        message: `لقد وصلت مصاريفك إلى ${Math.round((currentSpending / monthlyBudget) * 100)}% من الميزانية الشهرية المحددة.`,
+        data: JSON.stringify({
+          currentSpending,
+          monthlyBudget,
+          percentage: (currentSpending / monthlyBudget) * 100
+        })
+      });
+    }
   }
 }
 
 // إنشاء إشعار تجاوز حد الإنفاق (خطر)
 async function createSpendingDangerNotification(userId: number, currentSpending: number, monthlyBudget: number) {
   if (currentSpending >= monthlyBudget) {
-    await storage.createNotification({
-      userId,
-      type: 'spending_limit_danger',
-      title: 'تحذير: تجاوز الميزانية الشهرية',
-      message: `لقد تجاوزت مصاريفك الميزانية الشهرية بنسبة ${Math.round(((currentSpending - monthlyBudget) / monthlyBudget) * 100)}%.`,
-      data: JSON.stringify({
-        currentSpending,
-        monthlyBudget,
-        overspending: currentSpending - monthlyBudget,
-        percentage: ((currentSpending - monthlyBudget) / monthlyBudget) * 100
-      })
+    // الحصول على جميع إشعارات الخطر للشهر الحالي
+    const currentDate = new Date();
+    const notifications = await storage.getNotifications(userId);
+    
+    // التحقق مما إذا كان هناك إشعار خطر حالي لهذا الشهر
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const existingDanger = notifications.find(n => {
+      if (n.type !== 'spending_limit_danger') return false;
+      const notifDate = new Date(n.createdAt);
+      return notifDate.getMonth() === currentMonth && notifDate.getFullYear() === currentYear;
     });
+    
+    // إذا لم يكن هناك إشعار مسبق، قم بإنشاء واحد جديد
+    if (!existingDanger) {
+      console.log("إنشاء إشعار خطر تجاوز الميزانية جديد");
+      await storage.createNotification({
+        userId,
+        type: 'spending_limit_danger',
+        title: 'تحذير: تجاوز الميزانية الشهرية',
+        message: `لقد تجاوزت مصاريفك الميزانية الشهرية بنسبة ${Math.round(((currentSpending - monthlyBudget) / monthlyBudget) * 100)}%.`,
+        data: JSON.stringify({
+          currentSpending,
+          monthlyBudget,
+          overspending: currentSpending - monthlyBudget,
+          percentage: ((currentSpending - monthlyBudget) / monthlyBudget) * 100
+        })
+      });
+    }
   }
 }
 
@@ -62,17 +97,34 @@ async function createLuxurySpendingNotification(userId: number, luxurySpending: 
   const luxuryPercentage = (luxurySpending / totalSpending) * 100;
   
   if (luxuryPercentage > 30) { // إذا كان الإنفاق على الرفاهية يتجاوز 30%
-    await storage.createNotification({
-      userId,
-      type: 'luxury_spending',
-      title: 'تحليل: ارتفاع الإنفاق على الرفاهيات',
-      message: `لاحظنا أن ${Math.round(luxuryPercentage)}% من مصاريفك هذا الشهر على الرفاهيات. قد ترغب في إعادة تنظيم أولويات الإنفاق.`,
-      data: JSON.stringify({
-        luxurySpending,
-        totalSpending,
-        percentage: luxuryPercentage
-      })
+    // الحصول على جميع إشعارات الرفاهية للشهر الحالي
+    const currentDate = new Date();
+    const notifications = await storage.getNotifications(userId);
+    
+    // التحقق مما إذا كان هناك إشعار رفاهية حالي لهذا الشهر
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const existingLuxury = notifications.find(n => {
+      if (n.type !== 'luxury_spending') return false;
+      const notifDate = new Date(n.createdAt);
+      return notifDate.getMonth() === currentMonth && notifDate.getFullYear() === currentYear;
     });
+    
+    // إذا لم يكن هناك إشعار مسبق، قم بإنشاء واحد جديد
+    if (!existingLuxury) {
+      console.log("إنشاء إشعار جديد للإنفاق على الرفاهيات");
+      await storage.createNotification({
+        userId,
+        type: 'luxury_spending',
+        title: 'تحليل: ارتفاع الإنفاق على الرفاهيات',
+        message: `لاحظنا أن ${Math.round(luxuryPercentage)}% من مصاريفك هذا الشهر على الرفاهيات. قد ترغب في إعادة تنظيم أولويات الإنفاق.`,
+        data: JSON.stringify({
+          luxurySpending,
+          totalSpending,
+          percentage: luxuryPercentage
+        })
+      });
+    }
   }
 }
 
@@ -81,61 +133,136 @@ async function createEssentialDecreaseNotification(userId: number, essentialSpen
   const essentialPercentage = (essentialSpending / totalSpending) * 100;
   
   if (essentialPercentage < 50 && totalSpending > 0) { // إذا كان الإنفاق على الأساسيات أقل من 50%
-    await storage.createNotification({
-      userId,
-      type: 'essential_decrease',
-      title: 'تحليل: انخفاض الإنفاق على الأساسيات',
-      message: `لاحظنا أن الإنفاق على العناصر الأساسية (${Math.round(essentialPercentage)}%) منخفض نسبيًا مقارنة بإجمالي الإنفاق.`,
-      data: JSON.stringify({
-        essentialSpending,
-        totalSpending,
-        percentage: essentialPercentage
-      })
+    // الحصول على جميع إشعارات الأساسيات للشهر الحالي
+    const currentDate = new Date();
+    const notifications = await storage.getNotifications(userId);
+    
+    // التحقق مما إذا كان هناك إشعار أساسيات حالي لهذا الشهر
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const existingEssential = notifications.find(n => {
+      if (n.type !== 'essential_decrease') return false;
+      const notifDate = new Date(n.createdAt);
+      return notifDate.getMonth() === currentMonth && notifDate.getFullYear() === currentYear;
     });
+    
+    // إذا لم يكن هناك إشعار مسبق، قم بإنشاء واحد جديد
+    if (!existingEssential) {
+      console.log("إنشاء إشعار جديد لانخفاض الإنفاق على الأساسيات");
+      await storage.createNotification({
+        userId,
+        type: 'essential_decrease',
+        title: 'تحليل: انخفاض الإنفاق على الأساسيات',
+        message: `لاحظنا أن الإنفاق على العناصر الأساسية (${Math.round(essentialPercentage)}%) منخفض نسبيًا مقارنة بإجمالي الإنفاق.`,
+        data: JSON.stringify({
+          essentialSpending,
+          totalSpending,
+          percentage: essentialPercentage
+        })
+      });
+    }
   }
 }
 
 // إنشاء التحليل الأسبوعي
 async function createWeeklyAnalysisNotification(userId: number) {
-  // الحصول على مصاريف الأسبوع الماضي
+  // الحصول على جميع إشعارات التحليل الأسبوعي
   const currentDate = new Date();
-  const lastWeekDate = new Date();
-  lastWeekDate.setDate(currentDate.getDate() - 7);
+  const notifications = await storage.getNotifications(userId);
   
-  // سنستخدم هذه الوظيفة فقط لإنشاء تحليل أسبوعي بسيط
-  await storage.createNotification({
-    userId,
-    type: 'weekly_analysis',
-    title: 'التحليل الأسبوعي لمصاريفك',
-    message: `استعرض التحليل الأسبوعي لمصاريفك للتعرف على اتجاهات الإنفاق وفرص التوفير.`,
-    data: JSON.stringify({
-      startDate: lastWeekDate.toISOString(),
-      endDate: currentDate.toISOString()
-    })
+  // التحقق مما إذا كان هناك إشعار تحليل أسبوعي لهذا الأسبوع
+  const today = currentDate.getDate();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  // نبحث عن إشعار تم إنشاؤه خلال الأسبوع الحالي
+  const existingWeeklyAnalysis = notifications.find(n => {
+    if (n.type !== 'weekly_analysis') return false;
+    const notifDate = new Date(n.createdAt);
+    const dayDiff = Math.abs(today - notifDate.getDate());
+    return notifDate.getMonth() === currentMonth && 
+           notifDate.getFullYear() === currentYear &&
+           dayDiff < 7; // في نفس الأسبوع
   });
+  
+  // إذا لم يكن هناك إشعار مسبق، قم بإنشاء واحد جديد
+  if (!existingWeeklyAnalysis) {
+    console.log("إنشاء إشعار تحليل أسبوعي جديد");
+    
+    const lastWeekDate = new Date();
+    lastWeekDate.setDate(currentDate.getDate() - 7);
+    
+    // سنستخدم هذه الوظيفة فقط لإنشاء تحليل أسبوعي بسيط
+    await storage.createNotification({
+      userId,
+      type: 'weekly_analysis',
+      title: 'التحليل الأسبوعي لمصاريفك',
+      message: `استعرض التحليل الأسبوعي لمصاريفك للتعرف على اتجاهات الإنفاق وفرص التوفير.`,
+      data: JSON.stringify({
+        startDate: lastWeekDate.toISOString(),
+        endDate: currentDate.toISOString()
+      })
+    });
+  }
 }
 
 // إنشاء إشعار اتجاه الإنفاق
 async function createExpenseTrendNotification(userId: number, trendType: 'increase' | 'decrease', percentage: number, category?: string) {
-  const title = trendType === 'increase' 
-    ? 'زيادة في الإنفاق' 
-    : 'انخفاض في الإنفاق';
+  // الحصول على جميع إشعارات اتجاه الإنفاق
+  const currentDate = new Date();
+  const notifications = await storage.getNotifications(userId);
+  
+  // التحقق مما إذا كان هناك إشعار اتجاه إنفاق مشابه لهذا الشهر
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  // نحدد ما إذا كنا بالفعل أرسلنا إشعارًا مماثلًا هذا الشهر
+  const existingTrendNotification = notifications.find(n => {
+    if (n.type !== 'expense_trend') return false;
     
-  const message = category 
-    ? `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إنفاقك على ${category} مقارنة بالشهر الماضي.`
-    : `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إجمالي إنفاقك مقارنة بالشهر الماضي.`;
+    // فحص التاريخ
+    const notifDate = new Date(n.createdAt);
+    if (notifDate.getMonth() !== currentMonth || notifDate.getFullYear() !== currentYear) {
+      return false;
+    }
     
-  await storage.createNotification({
-    userId,
-    type: 'expense_trend',
-    title,
-    message,
-    data: JSON.stringify({
-      trendType,
-      percentage,
-      category
-    })
+    // إذا كان الإشعار يخص نفس الفئة
+    if (category) {
+      try {
+        const data = JSON.parse(n.data || '{}');
+        return data.category === category && data.trendType === trendType;
+      } catch {
+        return false;
+      }
+    }
+    
+    return true;
   });
+  
+  // إذا لم يكن هناك إشعار مشابه، قم بإنشاء واحد جديد
+  if (!existingTrendNotification) {
+    console.log("إنشاء إشعار اتجاه إنفاق جديد");
+    
+    const title = trendType === 'increase' 
+      ? 'زيادة في الإنفاق' 
+      : 'انخفاض في الإنفاق';
+      
+    const message = category 
+      ? `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إنفاقك على ${category} مقارنة بالشهر الماضي.`
+      : `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إجمالي إنفاقك مقارنة بالشهر الماضي.`;
+      
+    await storage.createNotification({
+      userId,
+      type: 'expense_trend',
+      title,
+      message,
+      data: JSON.stringify({
+        trendType,
+        percentage,
+        category
+      })
+    });
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
