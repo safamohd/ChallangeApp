@@ -2,7 +2,12 @@ import express, { type Express, Request, Response, NextFunction } from "express"
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertExpenseSchema, insertSavingsGoalSchema, insertSubGoalSchema } from "@shared/schema";
+import { 
+  insertExpenseSchema, 
+  insertSavingsGoalSchema, 
+  insertSubGoalSchema,
+  notificationTypeEnum
+} from "@shared/schema";
 import { setupAuth } from "./auth";
 
 // وظيفة middleware للتأكد من أن المستخدم مسجل الدخول
@@ -12,6 +17,126 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   }
   res.status(401).json({ error: "يجب تسجيل الدخول للوصول إلى هذه الخدمة" });
 };
+
+// وظائف مساعدة لإنشاء الإشعارات
+
+// إنشاء إشعار تجاوز حد الإنفاق (تحذير)
+async function createSpendingWarningNotification(userId: number, currentSpending: number, monthlyBudget: number) {
+  const warningLimit = monthlyBudget * 0.8; // 80% من الميزانية الشهرية
+  
+  if (currentSpending >= warningLimit && currentSpending < monthlyBudget) {
+    await storage.createNotification({
+      userId,
+      type: 'spending_limit_warning',
+      title: 'تنبيه: اقتراب من حد الميزانية',
+      message: `لقد وصلت مصاريفك إلى ${Math.round((currentSpending / monthlyBudget) * 100)}% من الميزانية الشهرية المحددة.`,
+      data: JSON.stringify({
+        currentSpending,
+        monthlyBudget,
+        percentage: (currentSpending / monthlyBudget) * 100
+      })
+    });
+  }
+}
+
+// إنشاء إشعار تجاوز حد الإنفاق (خطر)
+async function createSpendingDangerNotification(userId: number, currentSpending: number, monthlyBudget: number) {
+  if (currentSpending >= monthlyBudget) {
+    await storage.createNotification({
+      userId,
+      type: 'spending_limit_danger',
+      title: 'تحذير: تجاوز الميزانية الشهرية',
+      message: `لقد تجاوزت مصاريفك الميزانية الشهرية بنسبة ${Math.round(((currentSpending - monthlyBudget) / monthlyBudget) * 100)}%.`,
+      data: JSON.stringify({
+        currentSpending,
+        monthlyBudget,
+        overspending: currentSpending - monthlyBudget,
+        percentage: ((currentSpending - monthlyBudget) / monthlyBudget) * 100
+      })
+    });
+  }
+}
+
+// إنشاء إشعار الإنفاق على الرفاهية
+async function createLuxurySpendingNotification(userId: number, luxurySpending: number, totalSpending: number) {
+  const luxuryPercentage = (luxurySpending / totalSpending) * 100;
+  
+  if (luxuryPercentage > 30) { // إذا كان الإنفاق على الرفاهية يتجاوز 30%
+    await storage.createNotification({
+      userId,
+      type: 'luxury_spending',
+      title: 'تحليل: ارتفاع الإنفاق على الرفاهيات',
+      message: `لاحظنا أن ${Math.round(luxuryPercentage)}% من مصاريفك هذا الشهر على الرفاهيات. قد ترغب في إعادة تنظيم أولويات الإنفاق.`,
+      data: JSON.stringify({
+        luxurySpending,
+        totalSpending,
+        percentage: luxuryPercentage
+      })
+    });
+  }
+}
+
+// إنشاء إشعار انخفاض الإنفاق على الأساسيات
+async function createEssentialDecreaseNotification(userId: number, essentialSpending: number, totalSpending: number) {
+  const essentialPercentage = (essentialSpending / totalSpending) * 100;
+  
+  if (essentialPercentage < 50 && totalSpending > 0) { // إذا كان الإنفاق على الأساسيات أقل من 50%
+    await storage.createNotification({
+      userId,
+      type: 'essential_decrease',
+      title: 'تحليل: انخفاض الإنفاق على الأساسيات',
+      message: `لاحظنا أن الإنفاق على العناصر الأساسية (${Math.round(essentialPercentage)}%) منخفض نسبيًا مقارنة بإجمالي الإنفاق.`,
+      data: JSON.stringify({
+        essentialSpending,
+        totalSpending,
+        percentage: essentialPercentage
+      })
+    });
+  }
+}
+
+// إنشاء التحليل الأسبوعي
+async function createWeeklyAnalysisNotification(userId: number) {
+  // الحصول على مصاريف الأسبوع الماضي
+  const currentDate = new Date();
+  const lastWeekDate = new Date();
+  lastWeekDate.setDate(currentDate.getDate() - 7);
+  
+  // سنستخدم هذه الوظيفة فقط لإنشاء تحليل أسبوعي بسيط
+  await storage.createNotification({
+    userId,
+    type: 'weekly_analysis',
+    title: 'التحليل الأسبوعي لمصاريفك',
+    message: `استعرض التحليل الأسبوعي لمصاريفك للتعرف على اتجاهات الإنفاق وفرص التوفير.`,
+    data: JSON.stringify({
+      startDate: lastWeekDate.toISOString(),
+      endDate: currentDate.toISOString()
+    })
+  });
+}
+
+// إنشاء إشعار اتجاه الإنفاق
+async function createExpenseTrendNotification(userId: number, trendType: 'increase' | 'decrease', percentage: number, category?: string) {
+  const title = trendType === 'increase' 
+    ? 'زيادة في الإنفاق' 
+    : 'انخفاض في الإنفاق';
+    
+  const message = category 
+    ? `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إنفاقك على ${category} مقارنة بالشهر الماضي.`
+    : `لاحظنا ${trendType === 'increase' ? 'زيادة' : 'انخفاضًا'} بنسبة ${Math.round(percentage)}% في إجمالي إنفاقك مقارنة بالشهر الماضي.`;
+    
+  await storage.createNotification({
+    userId,
+    type: 'expense_trend',
+    title,
+    message,
+    data: JSON.stringify({
+      trendType,
+      percentage,
+      category
+    })
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // إعداد المصادقة
@@ -127,6 +252,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Validated expense data:", JSON.stringify(validatedData));
       
       const newExpense = await storage.createExpense(validatedData);
+      
+      // بعد إضافة المصروف، تحقق مما إذا كان يجب إنشاء إشعارات
+      try {
+        // الحصول على معلومات المستخدم للتحقق من الميزانية
+        const user = await storage.getUser(userId);
+        if (user) {
+          // الحصول على إجمالي المصاريف لهذا الشهر
+          const currentDate = new Date();
+          const month = currentDate.getMonth();
+          const year = currentDate.getFullYear();
+          const expenses = await storage.getExpensesByMonth(userId, month, year);
+          const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+          
+          // إذا كان المستخدم لديه ميزانية شهرية، تحقق من حدود الإنفاق
+          const monthlyBudget = user.monthlyBudget || 0;
+          if (monthlyBudget > 0) {
+            // التحقق من حدود الإنفاق وإنشاء إشعارات إذا لزم الأمر
+            await createSpendingWarningNotification(userId, totalAmount, monthlyBudget);
+            await createSpendingDangerNotification(userId, totalAmount, monthlyBudget);
+          }
+          
+          // تحليل أنماط الإنفاق إذا كان هناك مصاريف كافية
+          if (expenses.length > 5) {
+            // حساب الإنفاق حسب الأهمية
+            const luxuryExpenses = expenses.filter(e => e.importance === 'رفاهية');
+            const essentialExpenses = expenses.filter(e => e.importance === 'مهم');
+            
+            const luxuryAmount = luxuryExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const essentialAmount = essentialExpenses.reduce((sum, e) => sum + e.amount, 0);
+            
+            // إنشاء إشعارات للإنفاق على الرفاهية أو الأساسيات إذا لزم الأمر
+            await createLuxurySpendingNotification(userId, luxuryAmount, totalAmount);
+            await createEssentialDecreaseNotification(userId, essentialAmount, totalAmount);
+          }
+        }
+      } catch (notificationError) {
+        // لا نريد أن تفشل عملية إضافة المصروف إذا فشلت عملية إنشاء الإشعارات
+        console.error("Error creating notifications:", notificationError);
+      }
+      
       res.status(201).json(newExpense);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -288,6 +453,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sort by amount in descending order
       importanceSummary.sort((a, b) => b.amount - a.amount);
+      
+      // قم بإنشاء إشعار تحليل أسبوعي إذا كان اليوم هو يوم الأحد
+      try {
+        const today = new Date();
+        if (today.getDay() === 0) { // 0 = الأحد
+          // تحقق مما إذا كان هناك مصاريف كافية لإنشاء تحليل
+          if (expenses.length > 10) {
+            await createWeeklyAnalysisNotification(userId);
+            
+            // فحص اتجاهات الإنفاق للفئات الرئيسية
+            if (categorySummary.length > 0) {
+              const topCategory = categorySummary[0];
+              await createExpenseTrendNotification(userId, 'increase', topCategory.percentage, topCategory.name);
+            }
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating weekly analysis notification:", notificationError);
+      }
       
       res.json({
         totalAmount,
@@ -474,6 +658,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "بيانات غير صالحة", details: error.errors });
       }
       res.status(500).json({ error: "حدث خطأ أثناء تحديث الملف الشخصي" });
+    }
+  });
+  
+  // API مسارات الإشعارات
+  
+  // الحصول على جميع الإشعارات للمستخدم الحالي
+  apiRouter.get("/notifications", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const notifications = await storage.getNotifications(req.user!.id);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // الحصول على عدد الإشعارات غير المقروءة
+  apiRouter.get("/notifications/unread-count", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const count = await storage.countUnreadNotifications(req.user!.id);
+      res.json({ count });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // وضع علامة "مقروء" على إشعار محدد
+  apiRouter.put("/notifications/:id/read", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notification = await storage.getNotificationById(id);
+      
+      if (!notification) {
+        return res.status(404).json({ error: "إشعار غير موجود" });
+      }
+      
+      // التحقق من ملكية الإشعار
+      if (notification.userId !== req.user!.id) {
+        return res.status(403).json({ error: "غير مصرح بهذه العملية" });
+      }
+      
+      const updatedNotification = await storage.markNotificationAsRead(id);
+      res.json(updatedNotification);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // وضع علامة "مقروء" على جميع الإشعارات
+  apiRouter.put("/notifications/mark-all-read", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      await storage.markAllNotificationsAsRead(req.user!.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // إنشاء إشعار جديد (للاختبار والاستخدام الداخلي)
+  apiRouter.post("/notifications", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const data = {
+        ...req.body,
+        userId: req.user!.id
+      };
+      
+      const notification = await storage.createNotification(data);
+      res.status(201).json(notification);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
   
