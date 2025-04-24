@@ -75,7 +75,7 @@ export function setupAuth(app: Express) {
   // مسار تسجيل مستخدم جديد
   app.post("/api/register", async (req, res, next) => {
     try {
-      const { username, password, email } = req.body;
+      const { username, password, email, monthlyBudget } = req.body;
       
       // التحقق من وجود اسم المستخدم
       const existingUser = await storage.getUserByUsername(username);
@@ -91,12 +91,16 @@ export function setupAuth(app: Express) {
         }
       }
 
+      // تحويل monthlyBudget إلى رقم إذا كان موجوداً
+      const parsedBudget = monthlyBudget ? parseFloat(monthlyBudget.toString()) : 0;
+
       // إنشاء المستخدم
       const user = await storage.createUser({
         username,
         password: await hashPassword(password),
         email,
         monthlySalary: 0,
+        monthlyBudget: parsedBudget // إضافة الميزانية الشهرية
       });
 
       // تسجيل دخول المستخدم تلقائياً بعد التسجيل
