@@ -54,16 +54,11 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
         </button>
         
         <button 
-          className={`flex flex-col items-center relative ${location === '/notifications' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/notifications')}
+          className={`flex flex-col items-center ${location === '/profile' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/profile')}
         >
-          <i className="fas fa-bell text-lg"></i>
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-          <span className="text-xs mt-1">الإشعارات</span>
+          <i className="fas fa-user text-lg"></i>
+          <span className="text-xs mt-1">الملف</span>
         </button>
       </div>
     </div>

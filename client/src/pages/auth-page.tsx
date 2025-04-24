@@ -101,6 +101,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gradient-to-r from-purple-50 to-purple-100 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+        {/* شعار التطبيق والشعار */}
+        <div className="col-span-full mb-6 text-center">
+          <h1 className="text-5xl font-bold text-primary mb-2">مصاريفي</h1>
+          <p className="text-xl text-gray-600">وين طارت فلوسي؟</p>
+        </div>
+        
         {/* قسم النموذج */}
         <div className="lg:col-span-2">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

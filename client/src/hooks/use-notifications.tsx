@@ -38,6 +38,7 @@ interface NotificationsContextType {
   error: Error | null;
   markAsRead: (id: number) => void;
   markAllAsRead: () => void;
+  dismissNotification: (id: number) => void;
 }
 
 // إنشاء السياق

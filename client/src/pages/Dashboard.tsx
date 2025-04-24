@@ -66,11 +66,12 @@ export default function Dashboard() {
 
   // تم إزالة استعلام أهداف التوفير
   
-  // Fetch user data for monthly salary
+  // Fetch user data for monthly salary and budget
   const { data: user, isLoading: userLoading } = useQuery<{
     id: number;
     username: string;
     monthlySalary: number;
+    monthlyBudget: number;
   }>({
     queryKey: ["/api/user"],
     retry: false,
@@ -79,8 +80,10 @@ export default function Dashboard() {
     staleTime: 0 // اعتبار البيانات منتهية الصلاحية فوراً
   });
 
-  // Calculate budget and remaining amount
-  const budget = user?.monthlySalary || 0;
+  // استخدام الميزانية الشهرية من حساب المستخدم (أو الراتب الشهري إذا لم يتم تعيين الميزانية)
+  const userBudget = user?.monthlyBudget || 0; // الميزانية الشهرية
+  const userSalary = user?.monthlySalary || 0; // الراتب الشهري
+  const budget = userBudget > 0 ? userBudget : userSalary;
   const totalExpenses = summary?.totalAmount || 0;
   const remaining = budget - totalExpenses;
 

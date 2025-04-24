@@ -196,21 +196,13 @@ export default function ProfilePage() {
         
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">إحصائيات الحساب</CardTitle>
+            <CardTitle className="text-right">معلومات الحساب</CardTitle>
             <CardDescription className="text-right">
-              معلومات عن نشاط حسابك
+              معلومات أساسية عن حسابك
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between border-b pb-2">
-              <span className="font-medium">عدد المعاملات</span>
-              <span>٢٥ معاملة</span>
-            </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="font-medium">تاريخ الانضمام</span>
-              <span>١٥ أبريل ٢٠٢٣</span>
-            </div>
-            <div className="flex justify-between">
               <span className="font-medium">اسم المستخدم</span>
               <span>{user?.username || ""}</span>
             </div>
