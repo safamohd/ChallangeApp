@@ -109,18 +109,27 @@ export default function ChallengesPage() {
         throw new Error(error.error || "حدث خطأ أثناء بدء التحدي");
       }
       
+      // بمجرد أن يتم بدء التحدي بنجاح، نحذفه من قائمة الاقتراحات إذا كان موجوداً
+      if (suggestedChallenges) {
+        const updatedSuggestions = suggestedChallenges.filter(c => c.id !== challenge.id);
+        queryClient.setQueryData(["/api/challenges/suggestions"], updatedSuggestions);
+      }
+      
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "تم بدء التحدي بنجاح!",
-        description: "ابدأ العمل على التحدي الآن.",
+        description: "سيتم تتبع تقدمك تلقائياً بناءً على سلوك الإنفاق اليومي.",
       });
       
       // تحديث البيانات
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges/suggestions"] });
+      
+      // تعيين البيانات المحدثة مباشرة
+      queryClient.setQueryData(["/api/challenges/active"], data);
     },
     onError: (error: Error) => {
       toast({
@@ -141,9 +150,20 @@ export default function ChallengesPage() {
         throw new Error(error.error || "حدث خطأ أثناء إلغاء التحدي");
       }
       
+      // تحديث العنصر النشط (إذا كان هذا هو التحدي النشط)
+      if (activeChallenge && activeChallenge.id === challengeId) {
+        queryClient.setQueryData(["/api/challenges/active"], null);
+      }
+      
+      // حذف التحدي من الاقتراحات إذا كان موجوداً فيها
+      if (suggestedChallenges) {
+        const updatedSuggestions = suggestedChallenges.filter(c => c.id !== challengeId);
+        queryClient.setQueryData(["/api/challenges/suggestions"], updatedSuggestions);
+      }
+      
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "تم إلغاء التحدي",
         description: "يمكنك دائمًا تجربة تحدٍ آخر.",
@@ -367,10 +387,24 @@ export default function ChallengesPage() {
           <div>
             <span className="font-medium">تاريخ الانتهاء:</span> {formatDate(challenge.endDate)}
           </div>
+          
           {challenge.status === 'active' && (
-            <div className="col-span-2">
-              <span className="font-medium">متبقي:</span> {getRemainingDays(challenge.endDate)} أيام
-            </div>
+            <>
+              <div className="col-span-2">
+                <span className="font-medium">متبقي:</span> {getRemainingDays(challenge.endDate)} أيام
+              </div>
+              <div className="col-span-2 mt-2 p-2 bg-amber-50 rounded-md text-xs">
+                <span className="font-medium block mb-1">كيف يتم تتبع التحدي؟</span>
+                <p className="leading-relaxed">
+                  {challenge.type === 'category_limit' && "يتم فحص الإنفاق اليومي في الفئة المحددة وتحديث التقدم تلقائياً"}
+                  {challenge.type === 'importance_limit' && "يتم فحص مستويات أهمية المصاريف اليومية وتحديث التقدم تلقائياً"}
+                  {challenge.type === 'time_based' && "يتم حساب المدة المنقضية من التحدي وتحديث التقدم تلقائياً"}
+                  {challenge.type === 'spending_reduction' && "يتم مقارنة الإنفاق اليومي بالحد الموضوع وتحديث التقدم تلقائياً"}
+                  {challenge.type === 'saving_goal' && "يتم حساب المبلغ المدخر وتحديث التقدم تلقائياً"}
+                  {challenge.type === 'consistency' && "يتم فحص انتظام تسجيل المصاريف وتحديث التقدم تلقائياً"}
+                </p>
+              </div>
+            </>
           )}
         </div>
       </CardContent>
@@ -399,22 +433,24 @@ export default function ChallengesPage() {
         )}
         
         {challenge.status === 'active' && (
-          <div className="w-full flex rtl:space-x-reverse space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => handleUpdateProgress(challenge.id, 100)}
-              className="flex-1"
-              disabled={updateProgressMutation.isPending}
-            >
-              أكملت التحدي
-            </Button>
+          <div className="w-full text-center">
+            <div className="bg-green-50 p-3 rounded-md mb-2 text-sm">
+              <p className="font-semibold text-green-800">التحدي قيد التنفيذ!</p>
+              <p className="text-xs text-green-700">يتم تتبع تقدمك تلقائياً بناءً على سلوك الإنفاق اليومي</p>
+            </div>
             <Button 
               variant="outline" 
               onClick={() => handleCancelChallenge(challenge.id)}
-              className="flex-1"
+              size="sm"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
               disabled={cancelChallengeMutation.isPending}
             >
-              إلغاء
+              {cancelChallengeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-1" />
+              )}
+              إلغاء التحدي
             </Button>
           </div>
         )}
