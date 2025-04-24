@@ -9,6 +9,7 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/ProfilePage";
 import NotificationsPage from "@/pages/NotificationsPage";
+import ChallengesPage from "@/pages/ChallengesPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AuthProvider } from "@/hooks/use-auth";
 import { NotificationsProvider } from "@/hooks/use-notifications";
@@ -21,6 +22,7 @@ function Router() {
       <ProtectedRoute path="/analytics" component={AnalyticsPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
+      <ProtectedRoute path="/challenges" component={ChallengesPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

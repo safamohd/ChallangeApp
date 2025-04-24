@@ -38,6 +38,14 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
         </button>
         
         <button 
+          className={`flex flex-col items-center ${location === '/challenges' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/challenges')}
+        >
+          <i className="fas fa-trophy text-lg"></i>
+          <span className="text-xs mt-1">التحديات</span>
+        </button>
+        
+        <button 
           className={`flex flex-col items-center ${location === '/analytics' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
           onClick={() => setLocation('/analytics')}
         >
