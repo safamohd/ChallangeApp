@@ -1508,26 +1508,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // التحقق مما إذا كان لدى المستخدم تحدي نشط بالفعل
       const activeChallenge = await storage.getActiveChallenge(userId);
       if (activeChallenge) {
-        return res.status(200).json({ 
-          message: 'لديك تحدي نشط بالفعل',
-          activeChallenge
-        });
+        return res.status(200).json([activeChallenge]);
       }
       
       // تحليل بيانات المستخدم واقتراح تحديات
-      const analysis = await analyzeUserDataForChallenges(userId);
+      const challengeCount = await analyzeUserDataForChallenges(userId);
       
-      if (!analysis || analysis.challenges.length === 0) {
-        return res.status(200).json({ 
-          message: 'لم نتمكن من اقتراح تحديات حاليًا، يرجى المحاولة لاحقًا بعد إضافة المزيد من المصاريف',
-          suggestions: []
-        });
+      // الحصول على التحديات المقترحة
+      const challenges = await storage.getChallenges(userId);
+      const suggestedChallenges = challenges.filter(c => c.status === 'suggested');
+      
+      if (suggestedChallenges.length === 0) {
+        return res.status(200).json([]);
       }
       
-      res.status(200).json({ 
-        message: 'تم العثور على اقتراحات تحديات',
-        suggestions: analysis.challenges
-      });
+      return res.status(200).json(suggestedChallenges);
     } catch (error: any) {
       console.error('Error analyzing user data for challenges:', error);
       res.status(500).json({ error: error.message || 'حدث خطأ أثناء تحليل البيانات لاقتراح التحديات' });
