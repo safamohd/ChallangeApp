@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistance } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Bell, CheckCircle2, Loader2 } from "lucide-react";
+import { Bell, CheckCircle2, Loader2, Trash2 } from "lucide-react";
 
 export default function NotificationsPage() {
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, dismissNotification } = useNotifications();
 
   // تصنيف الإشعارات حسب النوع
   const getNotificationTypeName = (type: string): string => {
@@ -162,58 +162,73 @@ export default function NotificationsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm">{notification.message}</p>
-                  
-                  {/* عرض بيانات إضافية إذا كانت متوفرة */}
-                  {notification.data && (
-                    <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
-                      {(() => {
-                        try {
-                          const parsedData = JSON.parse(notification.data) as Record<string, unknown>;
-                          return (
-                            <ul className="list-disc list-inside space-y-1">
-                              {Object.entries(parsedData).map(([key, value]) => {
-                                // تجاهل المفاتيح التي تحتوي على كلمة "percentage" للتنسيق الخاص
-                                if (key.includes('percentage')) return null;
-                                
-                                // عرض النسب المئوية بتنسيق خاص
-                                const percentKey = Object.keys(parsedData).find(k => 
-                                  k.includes('percentage') && k.startsWith(key)
-                                );
-                                
-                                let displayValue = String(value);
-                                if (key === 'currentAmount' || key === 'overspending' || key === 'amount') {
-                                  displayValue = `${displayValue} ﷼`;
-                                }
-                                
-                                return (
-                                  <li key={key}>
-                                    {key === 'startDate' ? 'الفترة: ' : 
-                                     key === 'endDate' ? 'إلى: ' :
-                                     key === 'currentSpending' ? 'المصروفات الحالية: ' :
-                                     key === 'monthlyBudget' ? 'الميزانية الشهرية: ' :
-                                     key === 'overspending' ? 'تجاوز الميزانية: ' :
-                                     key === 'trendType' ? 'نوع الاتجاه: ' :
-                                     key === 'category' ? 'الفئة: ' :
-                                     key === 'luxurySpending' ? 'الإنفاق على الرفاهيات: ' :
-                                     key === 'essentialSpending' ? 'الإنفاق على الأساسيات: ' :
-                                     key === 'totalSpending' ? 'إجمالي الإنفاق: ' :
-                                     ''}
-                                    {displayValue}
-                                    {percentKey && typeof parsedData[percentKey] === 'number' ? 
-                                      ` (${Math.round(parsedData[percentKey] as number)}%)` : 
-                                      ''}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          );
-                        } catch {
-                          return <p>{notification.data}</p>;
-                        }
-                      })()}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm">{notification.message}</p>
+                      
+                      {/* عرض بيانات إضافية إذا كانت متوفرة */}
+                      {notification.data && (
+                        <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
+                          {(() => {
+                            try {
+                              const parsedData = JSON.parse(notification.data) as Record<string, unknown>;
+                              return (
+                                <ul className="list-disc list-inside space-y-1">
+                                  {Object.entries(parsedData).map(([key, value]) => {
+                                    // تجاهل المفاتيح التي تحتوي على كلمة "percentage" للتنسيق الخاص
+                                    if (key.includes('percentage')) return null;
+                                    
+                                    // عرض النسب المئوية بتنسيق خاص
+                                    const percentKey = Object.keys(parsedData).find(k => 
+                                      k.includes('percentage') && k.startsWith(key)
+                                    );
+                                    
+                                    let displayValue = String(value);
+                                    if (key === 'currentAmount' || key === 'overspending' || key === 'amount') {
+                                      displayValue = `${displayValue} ﷼`;
+                                    }
+                                    
+                                    return (
+                                      <li key={key}>
+                                        {key === 'startDate' ? 'الفترة: ' : 
+                                         key === 'endDate' ? 'إلى: ' :
+                                         key === 'currentSpending' ? 'المصروفات الحالية: ' :
+                                         key === 'monthlyBudget' ? 'الميزانية الشهرية: ' :
+                                         key === 'overspending' ? 'تجاوز الميزانية: ' :
+                                         key === 'trendType' ? 'نوع الاتجاه: ' :
+                                         key === 'category' ? 'الفئة: ' :
+                                         key === 'luxurySpending' ? 'الإنفاق على الرفاهيات: ' :
+                                         key === 'essentialSpending' ? 'الإنفاق على الأساسيات: ' :
+                                         key === 'totalSpending' ? 'إجمالي الإنفاق: ' :
+                                         ''}
+                                        {displayValue}
+                                        {percentKey && typeof parsedData[percentKey] === 'number' ? 
+                                          ` (${Math.round(parsedData[percentKey] as number)}%)` : 
+                                          ''}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              );
+                            } catch {
+                              return <p>{notification.data}</p>;
+                            }
+                          })()}
+                        </div>
+                      )}
                     </div>
-                  )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation(); // لمنع التداخل مع علامة "مقروء"
+                        dismissNotification(notification.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
