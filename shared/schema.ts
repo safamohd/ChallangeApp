@@ -10,7 +10,27 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'luxury_spending',        // تحذير عند زيادة الإنفاق على الرفاهية
   'essential_decrease',     // إشعار عند انخفاض الإنفاق على الأساسيات
   'weekly_analysis',        // تحليل أسبوعي
-  'expense_trend'           // اتجاه الإنفاق
+  'expense_trend',          // اتجاه الإنفاق
+  'challenge_suggestion'    // اقتراح تحدي جديد
+]);
+
+// إنشاء أنواع مخصصة للتحديات
+export const challengeTypeEnum = pgEnum('challenge_type', [
+  'category_limit',     // تحديات الحد من الإنفاق على فئة معينة
+  'importance_limit',   // تحديات الحد من الإنفاق حسب الأهمية
+  'time_based',         // تحديات مرتبطة بالوقت (مثل عدم الإنفاق في عطلة نهاية الأسبوع)
+  'spending_reduction', // تحديات تقليل الإنفاق العام
+  'saving_goal',        // تحديات الادخار
+  'consistency'         // تحديات الانتظام في تسجيل المصاريف
+]);
+
+// إنشاء حالات التحديات
+export const challengeStatusEnum = pgEnum('challenge_status', [
+  'suggested',  // تم اقتراح التحدي
+  'active',     // التحدي نشط
+  'completed',  // تم إكمال التحدي
+  'failed',     // فشل في التحدي
+  'dismissed'   // تم رفض التحدي
 ]);
 
 // Users schema
@@ -41,6 +61,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   expenses: many(expenses),
   savingsGoals: many(savingsGoals),
   notifications: many(notifications),
+  challenges: many(challenges),
 }));
 
 // Expense Categories
@@ -190,6 +211,49 @@ export type Notification = typeof notifications.$inferSelect;
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+// جدول التحديات
+export const challenges = pgTable("challenges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // المستخدم المتعلق بالتحدي
+  title: text("title").notNull(), // عنوان التحدي
+  description: text("description").notNull(), // وصف التحدي
+  type: challengeTypeEnum("type").notNull(), // نوع التحدي
+  status: challengeStatusEnum("status").default("suggested").notNull(), // حالة التحدي
+  startDate: timestamp("start_date").defaultNow().notNull(), // تاريخ بدء التحدي
+  endDate: timestamp("end_date").notNull(), // تاريخ انتهاء التحدي
+  progress: real("progress").default(0).notNull(), // نسبة التقدم (0-100)
+  targetValue: real("target_value"), // قيمة الهدف (على سبيل المثال: مبلغ الادخار)
+  currentValue: real("current_value").default(0), // القيمة الحالية
+  createdAt: timestamp("created_at").defaultNow().notNull(), // تاريخ إنشاء التحدي
+  updatedAt: timestamp("updated_at").defaultNow().notNull(), // تاريخ آخر تحديث للتحدي
+  metadata: text("metadata"), // بيانات إضافية بتنسيق JSON (مثل معرف الفئة، أو أيام الأسبوع)
+});
+
+export const insertChallengeSchema = createInsertSchema(challenges).pick({
+  userId: true,
+  title: true,
+  description: true,
+  type: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  progress: true,
+  targetValue: true,
+  currentValue: true,
+  metadata: true,
+});
+
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type Challenge = typeof challenges.$inferSelect;
+
+// علاقات التحديات
+export const challengesRelations = relations(challenges, ({ one }) => ({
+  user: one(users, {
+    fields: [challenges.userId],
     references: [users.id],
   }),
 }));

@@ -4,7 +4,8 @@ import {
   expenses, type Expense, type InsertExpense,
   savingsGoals, type SavingsGoal, type InsertSavingsGoal,
   subGoals, type SubGoal, type InsertSubGoal,
-  notifications, type Notification, type InsertNotification
+  notifications, type Notification, type InsertNotification,
+  challenges, type Challenge, type InsertChallenge
 } from "@shared/schema";
 // modify the interface with any CRUD methods
 // you might need
@@ -50,10 +51,19 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<Notification>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
   countUnreadNotifications(userId: number): Promise<number>;
+  
+  // Challenge operations
+  getChallenges(userId: number): Promise<Challenge[]>;
+  getActiveChallenge(userId: number): Promise<Challenge | undefined>;
+  getChallengeById(id: number): Promise<Challenge | undefined>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: number, challenge: Partial<InsertChallenge>): Promise<Challenge>;
+  updateChallengeStatus(id: number, status: 'active' | 'completed' | 'failed' | 'dismissed'): Promise<Challenge>;
+  updateChallengeProgress(id: number, progress: number, currentValue?: number): Promise<Challenge>;
 }
 
 import { db } from "./db";
-import { desc, eq, and, sql } from "drizzle-orm";
+import { desc, eq, and, sql, or } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   
