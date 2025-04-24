@@ -18,10 +18,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Check, Clock, Flag, Award, Ban, XCircle, Trophy } from "lucide-react";
+import { 
+  Check, 
+  Clock, 
+  Flag, 
+  Award, 
+  Ban, 
+  XCircle, 
+  Trophy, 
+  PieChart, 
+  Calendar, 
+  Activity, 
+  DollarSign,
+  Target,
+  BarChart4, 
+  Loader2 
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
-import { Loader2 } from "lucide-react";
 
 // أنواع البيانات
 interface Challenge {
@@ -313,19 +329,19 @@ export default function ChallengesPage() {
   const getChallengeTypeIcon = (type: string) => {
     switch (type) {
       case 'category_limit':
-        return <Clock className="h-4 w-4 mr-1" />;
+        return <PieChart className="h-4 w-4 mr-1" />;
       case 'importance_limit':
-        return <Flag className="h-4 w-4 mr-1" />;
+        return <Target className="h-4 w-4 mr-1" />;
       case 'time_based':
-        return <Clock className="h-4 w-4 mr-1" />;
+        return <Calendar className="h-4 w-4 mr-1" />;
       case 'spending_reduction':
-        return <Award className="h-4 w-4 mr-1" />;
+        return <DollarSign className="h-4 w-4 mr-1" />;
       case 'saving_goal':
         return <Award className="h-4 w-4 mr-1" />;
       case 'consistency':
-        return <Trophy className="h-4 w-4 mr-1" />;
+        return <Activity className="h-4 w-4 mr-1" />;
       default:
-        return null;
+        return <Flag className="h-4 w-4 mr-1" />;
     }
   };
 
@@ -352,63 +368,109 @@ export default function ChallengesPage() {
 
   // عرض بطاقة تحدي
   const renderChallengeCard = (challenge: Challenge) => (
-    <Card key={challenge.id} className="w-full mb-4 shadow-sm hover:shadow-md transition-shadow border" dir="rtl">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-bold">{challenge.title}</CardTitle>
-          <div className="flex space-x-1 rtl:space-x-reverse">
-            <Badge className={getChallengeStatusColor(challenge.status)}>
-              {getChallengeStatusIcon(challenge.status)}
-              {getChallengeStatusText(challenge.status)}
-            </Badge>
-            <Badge variant="outline">
-              {getChallengeTypeIcon(challenge.type)}
-              {getChallengeTypeText(challenge.type)}
-            </Badge>
-          </div>
+    <Card 
+      key={challenge.id} 
+      className={`w-full shadow-sm hover:shadow-md transition-all border overflow-hidden
+        ${challenge.status === 'active' ? 'ring-1 ring-primary/20 bg-primary/[0.03]' : ''}
+        ${challenge.status === 'completed' ? 'ring-1 ring-green-200 bg-green-50/30' : ''}
+        ${challenge.status === 'failed' ? 'ring-1 ring-red-200 bg-red-50/30' : ''}
+      `}
+      dir="rtl"
+    >
+      {challenge.status === 'active' && (
+        <div className="bg-primary/10 h-1.5">
+          <div className="bg-primary h-full" style={{ width: `${challenge.progress}%` }}></div>
         </div>
-        <CardDescription className="text-sm mt-1">
+      )}
+      
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start gap-2">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              {getChallengeTypeIcon(challenge.type)}
+              <Badge variant="outline" className="font-normal">
+                {getChallengeTypeText(challenge.type)}
+              </Badge>
+              <Badge className={getChallengeStatusColor(challenge.status)}>
+                {getChallengeStatusIcon(challenge.status)}
+                {getChallengeStatusText(challenge.status)}
+              </Badge>
+            </div>
+            <CardTitle className="text-lg font-bold">{challenge.title}</CardTitle>
+          </div>
+          
+          {challenge.status === 'active' && (
+            <div className="flex flex-col items-center justify-center bg-primary/10 rounded-full w-14 h-14 shrink-0">
+              <span className="text-lg font-bold text-primary">{challenge.progress.toFixed(0)}%</span>
+              <span className="text-[10px] text-primary/80">التقدم</span>
+            </div>
+          )}
+        </div>
+        <CardDescription className="text-sm mt-2 leading-relaxed">
           {challenge.description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-2">
-        <div className="mb-4 text-sm">
-          <div className="flex justify-between mb-1 items-center">
-            <span>التقدم:</span>
-            <span>{challenge.progress.toFixed(0)}%</span>
+      
+      <CardContent className="pb-3">
+        {challenge.status === 'active' && (
+          <div className="mb-4">
+            <div className="flex justify-between mb-1 items-center text-sm">
+              <span className="font-medium">التقدم في التحدي:</span>
+              <span>{challenge.progress.toFixed(0)}%</span>
+            </div>
+            <Progress value={challenge.progress} className="h-2" />
           </div>
-          <Progress value={challenge.progress} className="h-2" />
-        </div>
+        )}
         
-        <div className="text-sm text-muted-foreground grid grid-cols-2 gap-2">
-          <div>
-            <span className="font-medium">تاريخ البدء:</span> {formatDate(challenge.startDate)}
+        <div className="text-sm text-muted-foreground">
+          <div className="flex justify-between items-center mb-2 bg-muted/20 p-2 rounded-md">
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 ml-1.5 text-muted-foreground" />
+              <span>تاريخ البدء:</span>
+            </div>
+            <span>{formatDate(challenge.startDate)}</span>
           </div>
-          <div>
-            <span className="font-medium">تاريخ الانتهاء:</span> {formatDate(challenge.endDate)}
+          
+          <div className="flex justify-between items-center mb-3 bg-muted/20 p-2 rounded-md">
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 ml-1.5 text-muted-foreground" />
+              <span>تاريخ الانتهاء:</span>
+            </div>
+            <span>{formatDate(challenge.endDate)}</span>
           </div>
           
           {challenge.status === 'active' && (
             <>
-              <div className="col-span-2">
-                <span className="font-medium">متبقي:</span> {getRemainingDays(challenge.endDate)} أيام
+              <div className="flex justify-between items-center mb-3 p-2 bg-primary/5 rounded-md">
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 ml-1.5 text-primary" />
+                  <span className="font-medium text-primary">الوقت المتبقي:</span>
+                </div>
+                <span className="font-medium">{getRemainingDays(challenge.endDate)} أيام</span>
               </div>
-              <div className="col-span-2 mt-2 p-2 bg-amber-50 rounded-md text-xs">
-                <span className="font-medium block mb-1">كيف يتم تتبع التحدي؟</span>
-                <p className="leading-relaxed">
-                  {challenge.type === 'category_limit' && "يتم فحص الإنفاق اليومي في الفئة المحددة وتحديث التقدم تلقائياً"}
-                  {challenge.type === 'importance_limit' && "يتم فحص مستويات أهمية المصاريف اليومية وتحديث التقدم تلقائياً"}
-                  {challenge.type === 'time_based' && "يتم حساب المدة المنقضية من التحدي وتحديث التقدم تلقائياً"}
-                  {challenge.type === 'spending_reduction' && "يتم مقارنة الإنفاق اليومي بالحد الموضوع وتحديث التقدم تلقائياً"}
-                  {challenge.type === 'saving_goal' && "يتم حساب المبلغ المدخر وتحديث التقدم تلقائياً"}
-                  {challenge.type === 'consistency' && "يتم فحص انتظام تسجيل المصاريف وتحديث التقدم تلقائياً"}
-                </p>
-              </div>
+              
+              <Separator className="my-3" />
+              
+              <Alert className="bg-amber-50 border-amber-200 p-3 my-2">
+                <div className="flex items-center mb-1">
+                  <Activity className="h-4 w-4 ml-1.5 text-amber-600" />
+                  <AlertTitle className="text-amber-800 font-medium text-sm">كيف يتم تتبع التحدي؟</AlertTitle>
+                </div>
+                <AlertDescription className="text-xs leading-relaxed text-amber-700">
+                  {challenge.type === 'category_limit' && "يجب عدم الإنفاق على الفئة المحددة لمدة 24 ساعة على الأقل لإحراز تقدم في التحدي. سيتم تحديث تقدمك تلقائياً بناءً على سلوك إنفاقك اليومي."}
+                  {challenge.type === 'importance_limit' && "يتم فحص مستويات أهمية مصاريفك اليومية وتحديث التقدم تلقائياً. استمر في تجنب المصاريف غير الضرورية لإحراز تقدم."}
+                  {challenge.type === 'time_based' && "يتم مراقبة الإنفاق في الأيام المحددة وتحديث التقدم تلقائياً. تجنب الإنفاق في هذه الأيام لإكمال التحدي."}
+                  {challenge.type === 'spending_reduction' && "يتم مقارنة إجمالي إنفاقك خلال فترة التحدي بالمتوسط السابق وتحديث التقدم تلقائياً. استمر في تقليل الإنفاق للنجاح."}
+                  {challenge.type === 'saving_goal' && "يتم تتبع مدى التزامك بالتوفير خلال فترة التحدي. المبالغ التي توفرها من خلال تقليل الإنفاق تحتسب تلقائياً."}
+                  {challenge.type === 'consistency' && "يتم مراقبة انتظامك في تسجيل المصاريف وتحديث التقدم بناءً على ذلك. استمر في تسجيل مصاريفك يومياً للنجاح."}
+                </AlertDescription>
+              </Alert>
             </>
           )}
         </div>
       </CardContent>
-      <CardFooter className="pt-2">
+      
+      <CardFooter className={`pt-0 ${challenge.status === 'active' ? 'bg-gradient-to-t from-primary/5 to-transparent' : ''}`}>
         {challenge.status === 'suggested' && (
           <div className="w-full flex rtl:space-x-reverse space-x-2">
             <Button 
@@ -418,7 +480,9 @@ export default function ChallengesPage() {
             >
               {startChallengeMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
-              ) : null}
+              ) : (
+                <Target className="h-4 w-4 ml-2" />
+              )}
               ابدأ التحدي
             </Button>
             <Button 
@@ -427,6 +491,11 @@ export default function ChallengesPage() {
               className="flex-1"
               disabled={cancelChallengeMutation.isPending}
             >
+              {cancelChallengeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              ) : (
+                <Ban className="h-4 w-4 ml-2" />
+              )}
               تجاهل
             </Button>
           </div>
@@ -434,21 +503,24 @@ export default function ChallengesPage() {
         
         {challenge.status === 'active' && (
           <div className="w-full text-center">
-            <div className="bg-green-50 p-3 rounded-md mb-2 text-sm">
-              <p className="font-semibold text-green-800">التحدي قيد التنفيذ!</p>
+            <div className="bg-green-50 border border-green-100 p-3 rounded-md mb-3 text-sm">
+              <div className="flex items-center justify-center mb-1">
+                <Activity className="h-4 w-4 ml-1.5 text-green-600" />
+                <p className="font-semibold text-green-800">التحدي قيد التنفيذ!</p>
+              </div>
               <p className="text-xs text-green-700">يتم تتبع تقدمك تلقائياً بناءً على سلوك الإنفاق اليومي</p>
             </div>
             <Button 
               variant="outline" 
               onClick={() => handleCancelChallenge(challenge.id)}
               size="sm"
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors border-red-200"
               disabled={cancelChallengeMutation.isPending}
             >
               {cancelChallengeMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin ml-2" />
               ) : (
-                <XCircle className="h-4 w-4 mr-1" />
+                <XCircle className="h-4 w-4 ml-1" />
               )}
               إلغاء التحدي
             </Button>
@@ -456,24 +528,39 @@ export default function ChallengesPage() {
         )}
         
         {challenge.status === 'completed' && (
-          <Button variant="outline" className="w-full" disabled>
-            <Check className="h-4 w-4 mr-2" />
-            تم الإنجاز! تهانينا
-          </Button>
+          <div className="w-full text-center">
+            <div className="bg-green-50 border border-green-100 p-3 rounded-md text-sm">
+              <div className="flex items-center justify-center">
+                <Trophy className="h-5 w-5 ml-1.5 text-green-600" />
+                <p className="font-semibold text-green-800">تهانينا! تم إنجاز التحدي بنجاح</p>
+              </div>
+              <p className="text-xs text-green-700 mt-1">استمر في تحسين عاداتك المالية من خلال التحديات الجديدة</p>
+            </div>
+          </div>
         )}
         
         {challenge.status === 'failed' && (
-          <Button variant="outline" className="w-full text-red-500" disabled>
-            <XCircle className="h-4 w-4 mr-2" />
-            لم يكتمل التحدي
-          </Button>
+          <div className="w-full text-center">
+            <div className="bg-red-50 border border-red-100 p-3 rounded-md text-sm">
+              <div className="flex items-center justify-center">
+                <XCircle className="h-5 w-5 ml-1.5 text-red-500" />
+                <p className="font-semibold text-red-700">لم يكتمل التحدي</p>
+              </div>
+              <p className="text-xs text-red-600 mt-1">لا تقلق، يمكنك دائمًا تجربة تحديات أخرى وتحسين أدائك</p>
+            </div>
+          </div>
         )}
         
         {challenge.status === 'dismissed' && (
-          <Button variant="outline" className="w-full" disabled>
-            <Ban className="h-4 w-4 mr-2" />
-            تم تجاهل التحدي
-          </Button>
+          <div className="w-full text-center">
+            <div className="bg-gray-50 border border-gray-100 p-3 rounded-md text-sm">
+              <div className="flex items-center justify-center">
+                <Ban className="h-5 w-5 ml-1.5 text-gray-500" />
+                <p className="font-semibold text-gray-700">تم تجاهل التحدي</p>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">يمكنك استكشاف تحديات أخرى تناسب أهدافك المالية</p>
+            </div>
+          </div>
         )}
       </CardFooter>
     </Card>
@@ -498,48 +585,87 @@ export default function ChallengesPage() {
   
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-6 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-6 text-right">تحدياتي المالية</h1>
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-right">تحدياتي المالية</h1>
+          {activeChallenge && (
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 py-1.5 px-3">
+              <Target className="h-4 w-4 ml-1" />
+              تحدي نشط قيد التنفيذ
+            </Badge>
+          )}
+        </div>
+        
+        <Alert className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-right">
+          <div className="flex items-center">
+            <Trophy className="h-5 w-5 text-primary ml-2" />
+            <AlertTitle className="font-bold text-primary">تحدياتك الشخصية</AlertTitle>
+          </div>
+          <AlertDescription className="text-muted-foreground mt-2">
+            تساعدك التحديات المالية على تحسين عاداتك المالية وتحقيق أهدافك في التوفير. ابدأ تحديًا جديدًا الآن وتتبع تقدمك تلقائيًا!
+          </AlertDescription>
+        </Alert>
         
         <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab} dir="rtl">
-          <TabsList className="w-full mb-6">
-            <TabsTrigger value="active">النشط</TabsTrigger>
-            <TabsTrigger value="suggested">مقترحات</TabsTrigger>
-            <TabsTrigger value="completed">مكتملة</TabsTrigger>
-            <TabsTrigger value="all">الكل</TabsTrigger>
+          <TabsList className="w-full mb-6 bg-background/50 p-1 shadow-sm border">
+            <TabsTrigger value="active" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">
+              <Activity className="h-4 w-4 ml-1.5" />
+              النشط
+            </TabsTrigger>
+            <TabsTrigger value="suggested" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">
+              <Flag className="h-4 w-4 ml-1.5" />
+              مقترحات
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">
+              <Check className="h-4 w-4 ml-1.5" />
+              مكتملة
+            </TabsTrigger>
+            <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium">
+              <BarChart4 className="h-4 w-4 ml-1.5" />
+              الكل
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value={activeTab}>
             {isLoadingChallenges || isLoadingActive || isLoadingSuggestions ? (
-              <div className="flex justify-center items-center p-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="flex flex-col justify-center items-center py-10">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">جاري تحميل التحديات...</p>
               </div>
             ) : filteredChallenges().length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
+              <div className="text-center py-10 bg-muted/20 rounded-lg border border-dashed">
                 {activeTab === "active" ? (
-                  <div>
+                  <div className="max-w-md mx-auto">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                     <h3 className="text-lg font-medium mb-2">لا توجد تحديات نشطة</h3>
-                    <p>يمكنك بدء تحدي جديد من علامة التبويب "مقترحات"</p>
+                    <p className="text-muted-foreground mb-4">يمكنك بدء تحدي جديد من علامة التبويب "مقترحات"</p>
+                    <Button onClick={() => setActiveTab("suggested")} variant="outline">
+                      <Flag className="h-4 w-4 ml-2" />
+                      استعرض التحديات المقترحة
+                    </Button>
                   </div>
                 ) : activeTab === "suggested" ? (
-                  <div>
+                  <div className="max-w-md mx-auto">
+                    <Flag className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                     <h3 className="text-lg font-medium mb-2">لا توجد تحديات مقترحة</h3>
-                    <p>أضف المزيد من المصاريف للحصول على اقتراحات مخصصة</p>
+                    <p className="text-muted-foreground">أضف المزيد من المصاريف للحصول على اقتراحات مخصصة بناءً على أنماط إنفاقك</p>
                   </div>
                 ) : activeTab === "completed" ? (
-                  <div>
+                  <div className="max-w-md mx-auto">
+                    <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                     <h3 className="text-lg font-medium mb-2">لا توجد تحديات مكتملة</h3>
-                    <p>أكمل تحدي لعرضه هنا</p>
+                    <p className="text-muted-foreground">أكمل تحدي لعرضه هنا. يتم تحديث التقدم تلقائيًا بناءً على عاداتك المالية.</p>
                   </div>
                 ) : (
-                  <div>
+                  <div className="max-w-md mx-auto">
+                    <BarChart4 className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                     <h3 className="text-lg font-medium mb-2">لا توجد تحديات</h3>
-                    <p>ستظهر التحديات هنا بمجرد بدء استخدام التطبيق</p>
+                    <p className="text-muted-foreground">ستظهر التحديات هنا بمجرد بدء استخدام التطبيق بشكل منتظم</p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-5">
                 {filteredChallenges().map((challenge) => renderChallengeCard(challenge))}
               </div>
             )}
