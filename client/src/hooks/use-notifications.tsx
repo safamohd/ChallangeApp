@@ -106,6 +106,31 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     },
   });
   
+  // حذف إشعار
+  const dismissNotificationMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/notifications/${id}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // إعادة تحميل بيانات الإشعارات وعدد الإشعارات غير المقروءة
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+      
+      toast({
+        title: "تم حذف الإشعار",
+        description: "تم حذف الإشعار بنجاح",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "خطأ",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
   // وضع علامة "مقروء" على جميع الإشعارات
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
@@ -139,6 +164,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const markAllAsRead = () => {
     markAllAsReadMutation.mutate();
   };
+  
+  const dismissNotification = (id: number) => {
+    dismissNotificationMutation.mutate(id);
+  };
 
   return (
     <NotificationsContext.Provider
@@ -149,6 +178,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         error,
         markAsRead,
         markAllAsRead,
+        dismissNotification,
       }}
     >
       {children}

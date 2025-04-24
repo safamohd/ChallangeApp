@@ -52,6 +52,7 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<Notification>;
   markAllNotificationsAsRead(userId: number): Promise<void>;
   countUnreadNotifications(userId: number): Promise<number>;
+  deleteNotification(id: number): Promise<boolean>;
   
   // Challenge operations
   getChallenges(userId: number): Promise<Challenge[]>;
