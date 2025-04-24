@@ -7,6 +7,7 @@ import {
   notifications, type Notification, type InsertNotification,
   challenges, type Challenge, type InsertChallenge
 } from "@shared/schema";
+import { db, pool } from "./db";
 // modify the interface with any CRUD methods
 // you might need
 
@@ -62,7 +63,6 @@ export interface IStorage {
   updateChallengeProgress(id: number, progress: number, currentValue?: number): Promise<Challenge>;
 }
 
-import { db } from "./db";
 import { desc, eq, and, sql, or } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
@@ -360,7 +360,7 @@ export class DatabaseStorage implements IStorage {
         RETURNING *
       `;
       
-      const result = await db.execute(sql, [
+      const result = await pool.query(sql, [
         insertChallenge.userId,
         insertChallenge.title,
         insertChallenge.description,
@@ -382,22 +382,94 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateChallenge(id: number, challengeUpdate: Partial<InsertChallenge>): Promise<Challenge> {
-    // تحديث تاريخ آخر تعديل للتحدي
-    const updatedData = {
-      ...challengeUpdate,
-      updatedAt: new Date()
-    };
-    
-    const [updatedChallenge] = await db.update(challenges)
-      .set(updatedData)
-      .where(eq(challenges.id, id))
-      .returning();
-    
-    if (!updatedChallenge) {
-      throw new Error(`Challenge with id ${id} not found`);
+    try {
+      // بناء استعلام SQL ديناميكي بناءً على الحقول المحدثة
+      let setClause = 'updated_at = $1';
+      const params: any[] = [new Date()];
+      let paramIndex = 2;
+      
+      // إضافة الحقول التي يتم تحديثها إلى استعلام SQL
+      if (challengeUpdate.title) {
+        setClause += `, title = $${paramIndex}`;
+        params.push(challengeUpdate.title);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.description) {
+        setClause += `, description = $${paramIndex}`;
+        params.push(challengeUpdate.description);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.type) {
+        setClause += `, type = $${paramIndex}::challenge_type`;
+        params.push(challengeUpdate.type);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.status) {
+        setClause += `, status = $${paramIndex}::challenge_status`;
+        params.push(challengeUpdate.status);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.startDate) {
+        setClause += `, start_date = $${paramIndex}`;
+        params.push(challengeUpdate.startDate);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.endDate) {
+        setClause += `, end_date = $${paramIndex}`;
+        params.push(challengeUpdate.endDate);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.progress !== undefined) {
+        setClause += `, progress = $${paramIndex}`;
+        params.push(challengeUpdate.progress);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.targetValue !== undefined) {
+        setClause += `, target_value = $${paramIndex}`;
+        params.push(challengeUpdate.targetValue);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.currentValue !== undefined) {
+        setClause += `, current_value = $${paramIndex}`;
+        params.push(challengeUpdate.currentValue);
+        paramIndex++;
+      }
+      
+      if (challengeUpdate.metadata !== undefined) {
+        setClause += `, metadata = $${paramIndex}`;
+        params.push(challengeUpdate.metadata);
+        paramIndex++;
+      }
+      
+      // إضافة شرط المعرف
+      params.push(id);
+      
+      const sql = `
+        UPDATE challenges
+        SET ${setClause}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+      
+      const result = await pool.query(sql, params);
+      
+      if (result.rows.length === 0) {
+        throw new Error(`Challenge with id ${id} not found`);
+      }
+      
+      return result.rows[0];
+    } catch (error: any) {
+      console.error("Error updating challenge:", error);
+      throw new Error(`Failed to update challenge: ${error.message}`);
     }
-    
-    return updatedChallenge;
   }
   
   async updateChallengeStatus(id: number, status: 'active' | 'completed' | 'failed' | 'dismissed'): Promise<Challenge> {
