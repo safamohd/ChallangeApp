@@ -264,10 +264,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(insertNotification: InsertNotification): Promise<Notification> {
-    const [notification] = await db.insert(notifications)
-      .values(insertNotification)
-      .returning();
-    return notification;
+    try {
+      const [notification] = await db.insert(notifications)
+        .values(insertNotification)
+        .returning();
+      return notification;
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      // إنشاء كائن إشعار بسيط حتى لا يتوقف البرنامج إذا فشل إنشاء الإشعار
+      return {
+        id: -1,
+        userId: insertNotification.userId,
+        type: insertNotification.type,
+        title: insertNotification.title,
+        message: insertNotification.message,
+        createdAt: new Date(),
+        isRead: false,
+        data: insertNotification.data || null
+      };
+    }
   }
 
   async markNotificationAsRead(id: number): Promise<Notification> {
@@ -329,11 +344,41 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createChallenge(insertChallenge: InsertChallenge): Promise<Challenge> {
-    const [challenge] = await db.insert(challenges)
-      .values(insertChallenge)
-      .returning();
-    
-    return challenge;
+    try {
+      // We need to adapt the data to match the expected types in the database
+      const sql = `
+        INSERT INTO challenges (
+          user_id, title, description, type, status, 
+          start_date, end_date, progress, target_value, 
+          current_value, metadata
+        ) 
+        VALUES (
+          $1, $2, $3, $4::challenge_type, $5::challenge_status, 
+          $6, $7, $8, $9, 
+          $10, $11
+        )
+        RETURNING *
+      `;
+      
+      const result = await db.execute(sql, [
+        insertChallenge.userId,
+        insertChallenge.title,
+        insertChallenge.description,
+        insertChallenge.type,
+        insertChallenge.status || 'active',
+        insertChallenge.startDate,
+        insertChallenge.endDate,
+        insertChallenge.progress || 0,
+        insertChallenge.targetValue || null,
+        insertChallenge.currentValue || 0,
+        insertChallenge.metadata || null
+      ]);
+      
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error creating challenge:", error);
+      throw new Error("Failed to create challenge");
+    }
   }
   
   async updateChallenge(id: number, challengeUpdate: Partial<InsertChallenge>): Promise<Challenge> {
@@ -356,41 +401,65 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateChallengeStatus(id: number, status: 'active' | 'completed' | 'failed' | 'dismissed'): Promise<Challenge> {
-    const [updatedChallenge] = await db.update(challenges)
-      .set({
+    try {
+      const sql = `
+        UPDATE challenges
+        SET status = $1::challenge_status, updated_at = $2
+        WHERE id = $3
+        RETURNING *
+      `;
+      
+      const result = await db.execute(sql, [
         status,
-        updatedAt: new Date()
-      })
-      .where(eq(challenges.id, id))
-      .returning();
-    
-    if (!updatedChallenge) {
-      throw new Error(`Challenge with id ${id} not found`);
+        new Date(),
+        id
+      ]);
+      
+      if (result.rows.length === 0) {
+        throw new Error(`Challenge with id ${id} not found`);
+      }
+      
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating challenge status:", error);
+      throw new Error(`Failed to update challenge status: ${error.message}`);
     }
-    
-    return updatedChallenge;
   }
   
   async updateChallengeProgress(id: number, progress: number, currentValue?: number): Promise<Challenge> {
-    const updateData: Record<string, any> = {
-      progress,
-      updatedAt: new Date()
-    };
-    
-    if (currentValue !== undefined) {
-      updateData.currentValue = currentValue;
+    try {
+      let sql;
+      let params;
+      
+      if (currentValue !== undefined) {
+        sql = `
+          UPDATE challenges
+          SET progress = $1, current_value = $2, updated_at = $3
+          WHERE id = $4
+          RETURNING *
+        `;
+        params = [progress, currentValue, new Date(), id];
+      } else {
+        sql = `
+          UPDATE challenges
+          SET progress = $1, updated_at = $2
+          WHERE id = $3
+          RETURNING *
+        `;
+        params = [progress, new Date(), id];
+      }
+      
+      const result = await db.execute(sql, params);
+      
+      if (result.rows.length === 0) {
+        throw new Error(`Challenge with id ${id} not found`);
+      }
+      
+      return result.rows[0];
+    } catch (error) {
+      console.error("Error updating challenge progress:", error);
+      throw new Error(`Failed to update challenge progress: ${error.message}`);
     }
-    
-    const [updatedChallenge] = await db.update(challenges)
-      .set(updateData)
-      .where(eq(challenges.id, id))
-      .returning();
-    
-    if (!updatedChallenge) {
-      throw new Error(`Challenge with id ${id} not found`);
-    }
-    
-    return updatedChallenge;
   }
 
   // Seed database with initial data

@@ -200,12 +200,12 @@ export const notifications = pgTable("notifications", {
   data: text("data"), // بيانات إضافية متعلقة بالإشعار (بتنسيق JSON)
 });
 
-export const insertNotificationSchema = createInsertSchema(notifications).pick({
-  userId: true,
-  type: true,
-  title: true,
-  message: true,
-  data: true
+export const insertNotificationSchema = z.object({
+  userId: z.number(),
+  type: z.string(),
+  title: z.string(),
+  message: z.string(),
+  data: z.string().optional()
 });
 
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
@@ -237,18 +237,18 @@ export const challenges = pgTable("challenges", {
   metadata: text("metadata"), // بيانات إضافية بتنسيق JSON (مثل معرف الفئة، أو أيام الأسبوع)
 });
 
-export const insertChallengeSchema = createInsertSchema(challenges).pick({
-  userId: true,
-  title: true,
-  description: true,
-  type: true,
-  status: true,
-  startDate: true,
-  endDate: true,
-  progress: true,
-  targetValue: true,
-  currentValue: true,
-  metadata: true,
+export const insertChallengeSchema = z.object({
+  userId: z.number(),
+  title: z.string(),
+  description: z.string(),
+  type: z.string(),
+  status: z.string().default("active"),
+  startDate: z.union([z.date(), z.string().transform(str => new Date(str))]).default(() => new Date()),
+  endDate: z.union([z.date(), z.string().transform(str => new Date(str))]),
+  progress: z.number().default(0),
+  targetValue: z.number().optional(),
+  currentValue: z.number().default(0),
+  metadata: z.string().optional(),
 });
 
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
