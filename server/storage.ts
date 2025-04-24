@@ -299,6 +299,99 @@ export class DatabaseStorage implements IStorage {
     
     return result[0]?.count || 0;
   }
+  
+  // Challenge operations
+  
+  async getChallenges(userId: number): Promise<Challenge[]> {
+    return db.select()
+      .from(challenges)
+      .where(eq(challenges.userId, userId))
+      .orderBy(desc(challenges.createdAt));
+  }
+  
+  async getActiveChallenge(userId: number): Promise<Challenge | undefined> {
+    const [challenge] = await db.select()
+      .from(challenges)
+      .where(and(
+        eq(challenges.userId, userId),
+        eq(challenges.status, 'active')
+      ));
+    
+    return challenge || undefined;
+  }
+  
+  async getChallengeById(id: number): Promise<Challenge | undefined> {
+    const [challenge] = await db.select()
+      .from(challenges)
+      .where(eq(challenges.id, id));
+    
+    return challenge || undefined;
+  }
+  
+  async createChallenge(insertChallenge: InsertChallenge): Promise<Challenge> {
+    const [challenge] = await db.insert(challenges)
+      .values(insertChallenge)
+      .returning();
+    
+    return challenge;
+  }
+  
+  async updateChallenge(id: number, challengeUpdate: Partial<InsertChallenge>): Promise<Challenge> {
+    // تحديث تاريخ آخر تعديل للتحدي
+    const updatedData = {
+      ...challengeUpdate,
+      updatedAt: new Date()
+    };
+    
+    const [updatedChallenge] = await db.update(challenges)
+      .set(updatedData)
+      .where(eq(challenges.id, id))
+      .returning();
+    
+    if (!updatedChallenge) {
+      throw new Error(`Challenge with id ${id} not found`);
+    }
+    
+    return updatedChallenge;
+  }
+  
+  async updateChallengeStatus(id: number, status: 'active' | 'completed' | 'failed' | 'dismissed'): Promise<Challenge> {
+    const [updatedChallenge] = await db.update(challenges)
+      .set({
+        status,
+        updatedAt: new Date()
+      })
+      .where(eq(challenges.id, id))
+      .returning();
+    
+    if (!updatedChallenge) {
+      throw new Error(`Challenge with id ${id} not found`);
+    }
+    
+    return updatedChallenge;
+  }
+  
+  async updateChallengeProgress(id: number, progress: number, currentValue?: number): Promise<Challenge> {
+    const updateData: Record<string, any> = {
+      progress,
+      updatedAt: new Date()
+    };
+    
+    if (currentValue !== undefined) {
+      updateData.currentValue = currentValue;
+    }
+    
+    const [updatedChallenge] = await db.update(challenges)
+      .set(updateData)
+      .where(eq(challenges.id, id))
+      .returning();
+    
+    if (!updatedChallenge) {
+      throw new Error(`Challenge with id ${id} not found`);
+    }
+    
+    return updatedChallenge;
+  }
 
   // Seed database with initial data
   async seedInitialData() {

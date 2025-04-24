@@ -6,7 +6,9 @@ import {
   insertExpenseSchema, 
   insertSavingsGoalSchema, 
   insertSubGoalSchema,
-  notificationTypeEnum
+  notificationTypeEnum,
+  insertChallengeSchema,
+  type Challenge
 } from "@shared/schema";
 import { setupAuth } from "./auth";
 
@@ -264,6 +266,479 @@ async function createExpenseTrendNotification(userId: number, trendType: 'increa
         category
       })
     });
+  }
+}
+
+// وظائف خاصة بنظام التحديات
+
+// تحليل بيانات المستخدم لإنشاء التحديات المناسبة
+async function analyzeUserDataForChallenges(userId: number) {
+  try {
+    // 1. جلب بيانات المستخدم
+    const user = await storage.getUser(userId);
+    if (!user) return null;
+    
+    // 2. جلب المصاريف للشهر الحالي
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const expenses = await storage.getExpensesByMonth(userId, currentMonth, currentYear);
+    
+    // 3. تحليل البيانات استنادًا إلى طلبات التحدي المختلفة
+    
+    // أ. تحليل الإنفاق حسب الفئات
+    const categorySpending: Record<number, number> = {};
+    expenses.forEach(expense => {
+      if (!categorySpending[expense.categoryId]) {
+        categorySpending[expense.categoryId] = 0;
+      }
+      categorySpending[expense.categoryId] += expense.amount;
+    });
+    
+    // ب. تحديد الفئة ذات الإنفاق الأعلى
+    let maxSpendingCategory = 0;
+    let maxSpendingAmount = 0;
+    
+    for (const categoryId in categorySpending) {
+      if (categorySpending[categoryId] > maxSpendingAmount) {
+        maxSpendingAmount = categorySpending[categoryId];
+        maxSpendingCategory = parseInt(categoryId);
+      }
+    }
+    
+    // جـ. تحليل الإنفاق حسب الأهمية
+    const importanceSpending: Record<string, number> = {
+      'مهم': 0,
+      'عادي': 0,
+      'رفاهية': 0
+    };
+    
+    expenses.forEach(expense => {
+      if (expense.importance) {
+        importanceSpending[expense.importance] += expense.amount;
+      }
+    });
+    
+    // د. حساب النسب المئوية للإنفاق حسب الأهمية
+    const totalSpending = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const luxuryPercentage = totalSpending > 0 ? (importanceSpending['رفاهية'] / totalSpending) * 100 : 0;
+    const normalPercentage = totalSpending > 0 ? (importanceSpending['عادي'] / totalSpending) * 100 : 0;
+    const essentialPercentage = totalSpending > 0 ? (importanceSpending['مهم'] / totalSpending) * 100 : 0;
+    
+    // هـ. تحليل أنماط الإنفاق اليومية
+    const daySpending: Record<number, number> = {};
+    expenses.forEach(expense => {
+      const day = new Date(expense.date).getDay(); // 0 = الأحد، 6 = السبت
+      if (!daySpending[day]) {
+        daySpending[day] = 0;
+      }
+      daySpending[day] += expense.amount;
+    });
+    
+    // و. تحليل إنفاق نهاية الأسبوع (الجمعة + السبت)
+    const weekendSpending = (daySpending[5] || 0) + (daySpending[6] || 0);
+    const weekdaySpending = totalSpending - weekendSpending;
+    const weekendPercentage = totalSpending > 0 ? (weekendSpending / totalSpending) * 100 : 0;
+    
+    // ز. قياس نسبة الإنفاق إلى الميزانية
+    const budgetPercentage = user.monthlyBudget > 0 ? (totalSpending / user.monthlyBudget) * 100 : 0;
+    
+    // ح. مراقبة انتظام تسجيل المصاريف (هل هناك فجوات كبيرة بين تواريخ المصاريف؟)
+    const sortedDates = expenses.map(e => new Date(e.date).getTime()).sort();
+    let maxGapDays = 0;
+    
+    if (sortedDates.length > 1) {
+      for (let i = 1; i < sortedDates.length; i++) {
+        const gap = (sortedDates[i] - sortedDates[i-1]) / (1000 * 60 * 60 * 24); // التحويل إلى أيام
+        maxGapDays = Math.max(maxGapDays, gap);
+      }
+    }
+    
+    // إنشاء التحدي الأكثر ملاءمة استنادًا إلى التحليل
+    
+    const challengeSuggestions = [];
+    
+    // تحدي تقليل الإنفاق على الفئة الأكثر استهلاكًا
+    if (maxSpendingCategory > 0) {
+      const category = await storage.getCategoryById(maxSpendingCategory);
+      if (category) {
+        challengeSuggestions.push({
+          type: 'category_limit',
+          title: `تحدي تقليل الإنفاق على ${category.name}`,
+          description: `تجنب الإنفاق على ${category.name} لمدة 10 أيام لتوفير المال.`,
+          metadata: JSON.stringify({
+            categoryId: maxSpendingCategory,
+            categoryName: category.name,
+            duration: 10 // أيام
+          })
+        });
+      }
+    }
+    
+    // تحدي تقليل الإنفاق على الرفاهيات
+    if (luxuryPercentage > 30) {
+      challengeSuggestions.push({
+        type: 'importance_limit',
+        title: 'تحدي التوقف عن الرفاهيات',
+        description: 'لا مصاريف رفاهية لمدة أسبوع، ركز على الضروريات فقط.',
+        metadata: JSON.stringify({
+          importance: 'رفاهية',
+          duration: 7 // أيام
+        })
+      });
+    }
+    
+    // تحدي التركيز على الضروريات
+    if (essentialPercentage < 50) {
+      challengeSuggestions.push({
+        type: 'importance_limit',
+        title: 'تحدي المصاريف الأساسية فقط',
+        description: 'أنفق فقط على العناصر المهمة والأساسية لمدة 7 أيام.',
+        metadata: JSON.stringify({
+          importance: 'مهم',
+          onlyEssentials: true,
+          duration: 7 // أيام
+        })
+      });
+    }
+    
+    // تحدي عدم الإنفاق في نهاية الأسبوع
+    if (weekendPercentage > 35) {
+      challengeSuggestions.push({
+        type: 'time_based',
+        title: 'لا إنفاق في نهاية الأسبوع',
+        description: 'تجنب الإنفاق يومي الجمعة والسبت لأسبوعين.',
+        metadata: JSON.stringify({
+          days: [5, 6], // الجمعة والسبت
+          duration: 14 // أيام
+        })
+      });
+    }
+    
+    // تحدي تقليل الإنفاق الأسبوعي عند الاقتراب من الميزانية
+    if (budgetPercentage > 75) {
+      const weeklyAvg = totalSpending / (currentDate.getDate() / 7); // متوسط الإنفاق الأسبوعي
+      
+      challengeSuggestions.push({
+        type: 'spending_reduction',
+        title: 'تحدي التقليل 30%',
+        description: `قم بخفض إنفاقك الأسبوعي بنسبة 30% (إلى ${Math.round(weeklyAvg * 0.7)} ﷼) هذا الأسبوع.`,
+        metadata: JSON.stringify({
+          targetReduction: 30,
+          weeklyAverage: weeklyAvg,
+          targetAmount: weeklyAvg * 0.7,
+          duration: 7 // أيام
+        })
+      });
+    }
+    
+    // تحدي الادخار
+    if (budgetPercentage < 90) {
+      const savingAmount = Math.round(totalSpending * 0.1); // 10% من الإنفاق الحالي
+      
+      challengeSuggestions.push({
+        type: 'saving_goal',
+        title: 'تحدي الإدخار الأسبوعي',
+        description: `ادخر ${savingAmount} ﷼ هذا الأسبوع من خلال تقليل المصاريف غير الضرورية.`,
+        metadata: JSON.stringify({
+          targetAmount: savingAmount,
+          duration: 7 // أيام
+        })
+      });
+    }
+    
+    // تحدي الانتظام في تسجيل المصاريف
+    if (maxGapDays > 3 || expenses.length < 10) {
+      challengeSuggestions.push({
+        type: 'consistency',
+        title: 'تحدي تسجيل المصاريف',
+        description: 'سجل مصاريفك يوميًا لمدة 7 أيام متتالية.',
+        metadata: JSON.stringify({
+          duration: 7, // أيام
+          requiresDaily: true
+        })
+      });
+    }
+    
+    // ترتيب الاقتراحات حسب الأولوية
+    return {
+      challenges: challengeSuggestions,
+      stats: {
+        totalSpending,
+        categorySpending,
+        importanceSpending,
+        luxuryPercentage,
+        normalPercentage,
+        essentialPercentage,
+        weekendSpending,
+        weekdaySpending,
+        weekendPercentage,
+        budgetPercentage,
+        maxGapDays
+      }
+    };
+    
+  } catch (error) {
+    console.error("Error analyzing user data for challenges:", error);
+    return null;
+  }
+}
+
+// إنشاء إشعار باقتراح تحدي جديد
+async function createChallengeSuggestionNotification(userId: number, challenge: any) {
+  try {
+    await storage.createNotification({
+      userId,
+      type: 'challenge_suggestion',
+      title: 'تحدي جديد متاح!',
+      message: `نقترح عليك تجربة "${challenge.title}". ${challenge.description}`,
+      data: JSON.stringify(challenge)
+    });
+    
+    console.log(`تم إنشاء إشعار باقتراح تحدي جديد للمستخدم ${userId}`);
+    return true;
+  } catch (error) {
+    console.error("Error creating challenge suggestion notification:", error);
+    return false;
+  }
+}
+
+// التحقق من إنجاز التحدي
+async function checkChallengeCompletion(challenge: Challenge, userId: number): Promise<{ completed: boolean, progress: number, currentValue?: number }> {
+  try {
+    // استخراج البيانات الوصفية
+    const metadata = challenge.metadata ? JSON.parse(challenge.metadata) : {};
+    
+    // جلب المصاريف منذ بدء التحدي
+    const startDate = new Date(challenge.startDate);
+    const endDate = new Date(challenge.endDate);
+    const today = new Date();
+    
+    // تحديد ما إذا كان التحدي قد انتهى
+    const isExpired = today > endDate;
+    
+    // جلب مصاريف الفترة
+    const allExpenses = await storage.getExpenses(userId);
+    const challengePeriodExpenses = allExpenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate >= startDate && expenseDate <= (isExpired ? endDate : today);
+    });
+    
+    // تحليل التقدم استنادًا إلى نوع التحدي
+    switch (challenge.type) {
+      case 'category_limit': {
+        // تحدي الحد من الإنفاق على فئة معينة
+        const categoryId = metadata.categoryId;
+        
+        // التحقق من عدم الإنفاق على هذه الفئة
+        const categoryExpenses = challengePeriodExpenses.filter(e => e.categoryId === categoryId);
+        
+        // حساب النسبة المئوية للنجاح
+        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysProgress = Math.min(100, (elapsedDays / totalDays) * 100);
+        
+        // إذا لم يكن هناك مصاريف في هذه الفئة، فالتحدي ناجح حتى الآن
+        const completed = isExpired && categoryExpenses.length === 0;
+        const failed = categoryExpenses.length > 0;
+        
+        // حساب التقدم
+        let progress = 0;
+        if (failed) {
+          progress = daysProgress / 2; // نصف النقاط للمحاولة
+        } else {
+          progress = daysProgress;
+        }
+        
+        return { 
+          completed, 
+          progress, 
+          currentValue: categoryExpenses.reduce((sum, e) => sum + e.amount, 0)
+        };
+      }
+      
+      case 'importance_limit': {
+        // تحدي الحد من الإنفاق حسب الأهمية
+        const importance = metadata.importance;
+        const onlyEssentials = metadata.onlyEssentials;
+        
+        if (onlyEssentials) {
+          // تحدي الإنفاق على الضروريات فقط
+          const nonEssentialExpenses = challengePeriodExpenses.filter(e => e.importance !== 'مهم');
+          const completed = isExpired && nonEssentialExpenses.length === 0;
+          
+          // حساب التقدم
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const elapsedDays = Math.min(totalDays, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const progress = nonEssentialExpenses.length === 0 ? (elapsedDays / totalDays) * 100 : (elapsedDays / totalDays) * 50;
+          
+          return { 
+            completed, 
+            progress: Math.min(100, progress), 
+            currentValue: nonEssentialExpenses.reduce((sum, e) => sum + e.amount, 0)
+          };
+        } else {
+          // تحدي تجنب الإنفاق على فئة معينة من الأهمية
+          const importanceExpenses = challengePeriodExpenses.filter(e => e.importance === importance);
+          const completed = isExpired && importanceExpenses.length === 0;
+          
+          // حساب التقدم
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const elapsedDays = Math.min(totalDays, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const progress = importanceExpenses.length === 0 ? (elapsedDays / totalDays) * 100 : (elapsedDays / totalDays) * 50;
+          
+          return { 
+            completed, 
+            progress: Math.min(100, progress), 
+            currentValue: importanceExpenses.reduce((sum, e) => sum + e.amount, 0)
+          };
+        }
+      }
+      
+      case 'time_based': {
+        // تحدي عدم الإنفاق في أيام محددة
+        const restrictedDays = metadata.days || [];
+        
+        // التحقق من عدم الإنفاق في الأيام المحددة
+        const dayExpenses = challengePeriodExpenses.filter(e => {
+          const expenseDay = new Date(e.date).getDay();
+          return restrictedDays.includes(expenseDay);
+        });
+        
+        // حساب عدد الأيام المحظورة التي مرت
+        const daysPassed = [];
+        let currentDate = new Date(startDate);
+        while (currentDate <= (isExpired ? endDate : today)) {
+          if (restrictedDays.includes(currentDate.getDay())) {
+            daysPassed.push(new Date(currentDate).toISOString().split('T')[0]);
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // حساب عدد الأيام المحظورة الكلي خلال التحدي
+        let totalRestrictedDays = 0;
+        currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          if (restrictedDays.includes(currentDate.getDay())) {
+            totalRestrictedDays++;
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // فحص ما إذا كانت هناك مصاريف في الأيام المحظورة
+        const failedDays = new Set();
+        dayExpenses.forEach(e => {
+          failedDays.add(new Date(e.date).toISOString().split('T')[0]);
+        });
+        
+        // حساب التقدم
+        const success = daysPassed.length - failedDays.size;
+        const progress = totalRestrictedDays > 0 ? (success / totalRestrictedDays) * 100 : 0;
+        const completed = isExpired && failedDays.size === 0 && daysPassed.length === totalRestrictedDays;
+        
+        return { 
+          completed, 
+          progress: Math.min(100, progress), 
+          currentValue: dayExpenses.reduce((sum, e) => sum + e.amount, 0)
+        };
+      }
+      
+      case 'spending_reduction': {
+        // تحدي تخفيض الإنفاق
+        const targetReduction = metadata.targetReduction || 30; // نسبة التخفيض المطلوبة
+        const weeklyAverage = metadata.weeklyAverage || 0;
+        const targetAmount = metadata.targetAmount || 0;
+        
+        // حساب إجمالي الإنفاق خلال فترة التحدي
+        const totalSpent = challengePeriodExpenses.reduce((sum, e) => sum + e.amount, 0);
+        
+        // حساب ما إذا كان قد تم الوصول للهدف
+        const completed = isExpired && totalSpent <= targetAmount;
+        
+        // حساب التقدم
+        let progress = 0;
+        if (totalSpent <= targetAmount) {
+          progress = 100;
+        } else if (weeklyAverage > 0) {
+          const reduction = Math.max(0, weeklyAverage - totalSpent);
+          progress = Math.min(100, (reduction / (weeklyAverage - targetAmount)) * 100);
+        }
+        
+        return { 
+          completed, 
+          progress, 
+          currentValue: totalSpent
+        };
+      }
+      
+      case 'saving_goal': {
+        // تحدي وضع مبلغ معين كتوفير
+        const targetAmount = metadata.targetAmount || 0;
+        
+        // يحتاج إلى تعديل ليتناسب مع آلية تتبع المدخرات في التطبيق
+        // (افتراضيًا) إذا كان الإنفاق أقل من المتوسط بمقدار المبلغ المستهدف للادخار
+        
+        // الافتراض: استخدام تقدم معتمد على الوقت، سيتم تحديثه يدويًا من قبل المستخدم
+        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const elapsedDays = Math.min(totalDays, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const progress = (elapsedDays / totalDays) * 100;
+        
+        // ملاحظة: هذا النوع من التحدي يحتاج لآلية تتبع خاصة به
+        return { 
+          completed: false, // سيتم تحديثه يدويًا من قبل المستخدم
+          progress: Math.min(100, progress),
+          currentValue: challenge.currentValue || 0
+        };
+      }
+      
+      case 'consistency': {
+        // تحدي تسجيل المصاريف بانتظام
+        const requiresDaily = metadata.requiresDaily || false;
+        
+        // تحليل أيام التسجيل
+        const recordedDays = new Set();
+        challengePeriodExpenses.forEach(e => {
+          recordedDays.add(new Date(e.date).toISOString().split('T')[0]);
+        });
+        
+        // حساب عدد الأيام التي مرت
+        const daysPassed = [];
+        let currentDate = new Date(startDate);
+        while (currentDate <= (isExpired ? endDate : today)) {
+          daysPassed.push(new Date(currentDate).toISOString().split('T')[0]);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        let completed = false;
+        let progress = 0;
+        
+        if (requiresDaily) {
+          // يجب تسجيل مصاريف كل يوم
+          completed = isExpired && recordedDays.size >= daysPassed.length;
+          progress = (recordedDays.size / daysPassed.length) * 100;
+        } else {
+          // التقدم المبني على مجرد تسجيل المصاريف بشكل عام
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const recordingsTarget = Math.min(totalDays, 7); // على الأقل 7 تسجيلات أو عدد أيام التحدي إذا كان أقل
+          
+          completed = isExpired && challengePeriodExpenses.length >= recordingsTarget;
+          progress = Math.min(100, (challengePeriodExpenses.length / recordingsTarget) * 100);
+        }
+        
+        return { 
+          completed, 
+          progress, 
+          currentValue: recordedDays.size
+        };
+      }
+      
+      default:
+        return { completed: false, progress: 0 };
+    }
+    
+  } catch (error) {
+    console.error("Error checking challenge completion:", error);
+    return { completed: false, progress: 0 };
   }
 }
 
