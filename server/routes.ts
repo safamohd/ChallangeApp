@@ -341,7 +341,8 @@ async function analyzeUserDataForChallenges(userId: number) {
     const weekendPercentage = totalSpending > 0 ? (weekendSpending / totalSpending) * 100 : 0;
     
     // ز. قياس نسبة الإنفاق إلى الميزانية
-    const budgetPercentage = user.monthlyBudget > 0 ? (totalSpending / user.monthlyBudget) * 100 : 0;
+    const monthlyBudget = user.monthlyBudget || 0;
+    const budgetPercentage = monthlyBudget > 0 ? (totalSpending / monthlyBudget) * 100 : 0;
     
     // ح. مراقبة انتظام تسجيل المصاريف (هل هناك فجوات كبيرة بين تواريخ المصاريف؟)
     const sortedDates = expenses.map(e => new Date(e.date).getTime()).sort();
@@ -1331,6 +1332,311 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(notification);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ================ APIs الخاصة بالتحديات ================
+  
+  // الحصول على جميع التحديات الخاصة بالمستخدم
+  apiRouter.get("/challenges", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const challenges = await storage.getChallenges(userId);
+      res.status(200).json(challenges);
+    } catch (error: any) {
+      console.error('Error fetching challenges:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء جلب التحديات' });
+    }
+  });
+  
+  // الحصول على التحدي النشط حاليًا
+  apiRouter.get("/challenges/active", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const challenge = await storage.getActiveChallenge(userId);
+      
+      if (!challenge) {
+        return res.status(404).json({ message: 'لا يوجد تحدي نشط حاليًا' });
+      }
+      
+      // التحقق من حالة التحدي وتحديث التقدم
+      const completionStatus = await checkChallengeCompletion(challenge, userId);
+      
+      if (completionStatus.progress !== challenge.progress || 
+          completionStatus.currentValue !== challenge.currentValue) {
+        // تحديث التقدم إذا تغير
+        await storage.updateChallengeProgress(
+          challenge.id, 
+          completionStatus.progress, 
+          completionStatus.currentValue
+        );
+      }
+      
+      // إذا انتهى التحدي وتم إكماله
+      if (completionStatus.completed && challenge.status === 'active') {
+        await storage.updateChallengeStatus(challenge.id, 'completed');
+        
+        // إنشاء إشعار بإكمال التحدي
+        await storage.createNotification({
+          userId,
+          type: 'challenge_completed',
+          title: 'تهانينا! تم إكمال التحدي',
+          message: `لقد أكملت "${challenge.title}" بنجاح. استمر في التقدم!`,
+          data: JSON.stringify({
+            challengeId: challenge.id,
+            title: challenge.title
+          })
+        });
+        
+        // جلب التحدي بعد التحديث
+        const updatedChallenge = await storage.getChallengeById(challenge.id);
+        return res.status(200).json(updatedChallenge);
+      }
+      
+      // تحديث التحدي إذا انتهت مدته ولم يتم إكماله
+      const now = new Date();
+      const endDate = new Date(challenge.endDate);
+      
+      if (endDate < now && challenge.status === 'active') {
+        await storage.updateChallengeStatus(challenge.id, 'failed');
+        
+        // إنشاء إشعار بفشل التحدي
+        await storage.createNotification({
+          userId,
+          type: 'challenge_failed',
+          title: 'انتهى وقت التحدي',
+          message: `انتهت مدة التحدي "${challenge.title}" دون إكماله. حاول مرة أخرى!`,
+          data: JSON.stringify({
+            challengeId: challenge.id,
+            title: challenge.title
+          })
+        });
+        
+        // جلب التحدي بعد التحديث
+        const updatedChallenge = await storage.getChallengeById(challenge.id);
+        return res.status(200).json(updatedChallenge);
+      }
+      
+      res.status(200).json({
+        ...challenge,
+        progress: completionStatus.progress,
+        currentValue: completionStatus.currentValue
+      });
+    } catch (error: any) {
+      console.error('Error fetching active challenge:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء جلب التحدي النشط' });
+    }
+  });
+  
+  // الحصول على اقتراحات التحديات بناءً على بيانات المستخدم
+  apiRouter.get("/challenges/suggestions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      // التحقق مما إذا كان لدى المستخدم تحدي نشط بالفعل
+      const activeChallenge = await storage.getActiveChallenge(userId);
+      if (activeChallenge) {
+        return res.status(200).json({ 
+          message: 'لديك تحدي نشط بالفعل',
+          activeChallenge
+        });
+      }
+      
+      // تحليل بيانات المستخدم واقتراح تحديات
+      const analysis = await analyzeUserDataForChallenges(userId);
+      
+      if (!analysis || analysis.challenges.length === 0) {
+        return res.status(200).json({ 
+          message: 'لم نتمكن من اقتراح تحديات حاليًا، يرجى المحاولة لاحقًا بعد إضافة المزيد من المصاريف',
+          suggestions: []
+        });
+      }
+      
+      res.status(200).json({ 
+        message: 'تم العثور على اقتراحات تحديات',
+        suggestions: analysis.challenges
+      });
+    } catch (error: any) {
+      console.error('Error analyzing user data for challenges:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء تحليل البيانات لاقتراح التحديات' });
+    }
+  });
+  
+  // بدء تحدي جديد
+  apiRouter.post("/challenges/start", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      
+      // التحقق مما إذا كان لدى المستخدم تحدي نشط بالفعل
+      const activeChallenge = await storage.getActiveChallenge(userId);
+      if (activeChallenge) {
+        return res.status(400).json({ 
+          error: 'لديك تحدي نشط بالفعل. أكمله أو قم بإلغائه قبل بدء تحدٍ جديد',
+          activeChallenge
+        });
+      }
+      
+      // المعلومات المطلوبة لبدء التحدي
+      const { type, title, description, metadata } = req.body;
+      
+      if (!type || !title || !description) {
+        return res.status(400).json({ error: 'يجب توفير نوع التحدي وعنوانه ووصفه' });
+      }
+      
+      // استخراج مدة التحدي من البيانات الوصفية
+      let duration = 7; // المدة الافتراضية هي أسبوع
+      
+      try {
+        const metadataObj = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
+        duration = metadataObj.duration || 7;
+      } catch (e) {
+        // استخدام المدة الافتراضية إذا فشل تحليل البيانات الوصفية
+      }
+      
+      // حساب تاريخ البدء والانتهاء
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + duration);
+      
+      // إنشاء التحدي
+      const newChallenge = await storage.createChallenge({
+        userId,
+        type,
+        title,
+        description,
+        metadata: typeof metadata === 'string' ? metadata : JSON.stringify(metadata),
+        startDate,
+        endDate,
+        status: 'active',
+        progress: 0,
+        currentValue: 0
+      });
+      
+      // إنشاء إشعار ببدء التحدي
+      await storage.createNotification({
+        userId,
+        type: 'challenge_started',
+        title: 'تم بدء تحدي جديد',
+        message: `لقد بدأت تحدي "${title}". استمر في المتابعة للتقدم!`,
+        data: JSON.stringify({
+          challengeId: newChallenge.id,
+          title,
+          endDate
+        })
+      });
+      
+      res.status(201).json(newChallenge);
+    } catch (error: any) {
+      console.error('Error starting challenge:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء بدء التحدي' });
+    }
+  });
+  
+  // إلغاء تحدي
+  apiRouter.put("/challenges/:id/cancel", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const challengeId = parseInt(req.params.id);
+      
+      // التحقق من وجود التحدي وملكيته
+      const challenge = await storage.getChallengeById(challengeId);
+      
+      if (!challenge) {
+        return res.status(404).json({ error: 'التحدي غير موجود' });
+      }
+      
+      if (challenge.userId !== userId) {
+        return res.status(403).json({ error: 'غير مصرح لك بإلغاء هذا التحدي' });
+      }
+      
+      // التحقق من أن التحدي نشط
+      if (challenge.status !== 'active') {
+        return res.status(400).json({ 
+          error: `لا يمكن إلغاء التحدي في حالة "${challenge.status}"`,
+          status: challenge.status
+        });
+      }
+      
+      // تحديث حالة التحدي
+      const updatedChallenge = await storage.updateChallengeStatus(challengeId, 'dismissed');
+      
+      // إنشاء إشعار بإلغاء التحدي
+      await storage.createNotification({
+        userId,
+        type: 'challenge_cancelled',
+        title: 'تم إلغاء التحدي',
+        message: `لقد قمت بإلغاء تحدي "${challenge.title}".`,
+        data: JSON.stringify({
+          challengeId,
+          title: challenge.title
+        })
+      });
+      
+      res.status(200).json(updatedChallenge);
+    } catch (error: any) {
+      console.error('Error cancelling challenge:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء إلغاء التحدي' });
+    }
+  });
+  
+  // تحديث تقدم التحدي يدويًا
+  apiRouter.put("/challenges/:id/update-progress", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const challengeId = parseInt(req.params.id);
+      const { progress, currentValue } = req.body;
+      
+      // التحقق من وجود التحدي وملكيته
+      const challenge = await storage.getChallengeById(challengeId);
+      
+      if (!challenge) {
+        return res.status(404).json({ error: 'التحدي غير موجود' });
+      }
+      
+      if (challenge.userId !== userId) {
+        return res.status(403).json({ error: 'غير مصرح لك بتحديث هذا التحدي' });
+      }
+      
+      // التحقق من أن التحدي نشط
+      if (challenge.status !== 'active') {
+        return res.status(400).json({ 
+          error: `لا يمكن تحديث التقدم في التحدي في حالة "${challenge.status}"`,
+          status: challenge.status
+        });
+      }
+      
+      // تحديث تقدم التحدي
+      let updatedChallenge;
+      
+      if (progress !== undefined && currentValue !== undefined) {
+        updatedChallenge = await storage.updateChallengeProgress(challengeId, progress, currentValue);
+      } else if (progress !== undefined) {
+        updatedChallenge = await storage.updateChallengeProgress(challengeId, progress);
+      } else {
+        return res.status(400).json({ error: 'يجب توفير قيمة progress على الأقل' });
+      }
+      
+      // تحديث حالة التحدي إذا اكتمل
+      if (progress >= 100) {
+        updatedChallenge = await storage.updateChallengeStatus(challengeId, 'completed');
+        
+        // إنشاء إشعار بإكمال التحدي
+        await storage.createNotification({
+          userId,
+          type: 'challenge_completed',
+          title: 'تهانينا! تم إكمال التحدي',
+          message: `لقد أكملت "${challenge.title}" بنجاح. استمر في التقدم!`,
+          data: JSON.stringify({
+            challengeId,
+            title: challenge.title
+          })
+        });
+      }
+      
+      res.status(200).json(updatedChallenge);
+    } catch (error: any) {
+      console.error('Error updating challenge progress:', error);
+      res.status(500).json({ error: error.message || 'حدث خطأ أثناء تحديث تقدم التحدي' });
     }
   });
   

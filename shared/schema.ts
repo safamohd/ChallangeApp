@@ -11,7 +11,11 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'essential_decrease',     // إشعار عند انخفاض الإنفاق على الأساسيات
   'weekly_analysis',        // تحليل أسبوعي
   'expense_trend',          // اتجاه الإنفاق
-  'challenge_suggestion'    // اقتراح تحدي جديد
+  'challenge_suggestion',   // اقتراح تحدي جديد
+  'challenge_started',      // تم بدء تحدي جديد
+  'challenge_completed',    // تم إكمال التحدي بنجاح
+  'challenge_failed',       // فشل في إكمال التحدي
+  'challenge_cancelled'     // تم إلغاء التحدي
 ]);
 
 // إنشاء أنواع مخصصة للتحديات
@@ -188,7 +192,7 @@ export const subGoalsRelations = relations(subGoals, ({ one }) => ({
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // المستخدم الذي يتعلق به الإشعار
-  type: notificationTypeEnum("type").notNull(), // نوع الإشعار
+  type: text("type").notNull(), // نوع الإشعار
   title: text("title").notNull(), // عنوان الإشعار
   message: text("message").notNull(), // محتوى الإشعار
   createdAt: timestamp("created_at").defaultNow().notNull(), // تاريخ إنشاء الإشعار
