@@ -605,22 +605,48 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         
         // التحقق من عدم الإنفاق على هذه الفئة
         const categoryExpenses = challengePeriodExpenses.filter(e => e.categoryId === categoryId);
+
+        // تحقق من شرط مرور 24 ساعة على الأقل
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+        
+        // هل مر على بدء التحدي 24 ساعة على الأقل؟
+        const has24HoursPassed = startDate <= twentyFourHoursAgo;
+        
+        // البحث عن مصاريف من نفس الفئة في آخر 24 ساعة
+        const recentCategoryExpenses = categoryExpenses.filter(e => {
+          const expenseDate = new Date(e.date);
+          return expenseDate >= twentyFourHoursAgo;
+        });
         
         // حساب النسبة المئوية للنجاح
         const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         const daysProgress = Math.min(100, (elapsedDays / totalDays) * 100);
         
-        // إذا لم يكن هناك مصاريف في هذه الفئة، فالتحدي ناجح حتى الآن
+        // شروط إكمال التحدي:
+        // 1. انتهت مدة التحدي
+        // 2. لا توجد مصاريف من هذه الفئة طوال فترة التحدي
         const completed = isExpired && categoryExpenses.length === 0;
+        
+        // شروط الفشل:
+        // 1. يوجد مصاريف من هذه الفئة
         const failed = categoryExpenses.length > 0;
         
         // حساب التقدم
         let progress = 0;
+        
         if (failed) {
           progress = daysProgress / 2; // نصف النقاط للمحاولة
-        } else {
+        } else if (!has24HoursPassed) {
+          // لم تمر 24 ساعة بعد، لذلك لا يمكن حساب تقدم حقيقي
+          progress = Math.min(20, daysProgress); // بحد أقصى 20% حتى تمر 24 ساعة
+        } else if (recentCategoryExpenses.length === 0) {
+          // مرت 24 ساعة بدون إنفاق على هذه الفئة
           progress = daysProgress;
+        } else {
+          // هناك إنفاق في آخر 24 ساعة
+          progress = daysProgress / 2;
         }
         
         return { 
@@ -1507,9 +1533,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // التحقق مما إذا كان لدى المستخدم تحدي نشط بالفعل
       const activeChallenge = await storage.getActiveChallenge(userId);
-      if (activeChallenge) {
-        return res.status(200).json([activeChallenge]);
-      }
       
       // تحليل بيانات المستخدم واقتراح تحديات
       const challengeCount = await analyzeUserDataForChallenges(userId);
@@ -1616,28 +1639,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'غير مصرح لك بإلغاء هذا التحدي' });
       }
       
-      // التحقق من أن التحدي نشط
-      if (challenge.status !== 'active') {
+      // التحقق من أن التحدي نشط أو مقترح
+      if (challenge.status !== 'active' && challenge.status !== 'suggested') {
         return res.status(400).json({ 
-          error: `لا يمكن إلغاء التحدي في حالة "${challenge.status}"`,
+          error: `لا يمكن إلغاء أو تجاهل التحدي في حالة "${challenge.status}"`,
           status: challenge.status
         });
       }
       
       // تحديث حالة التحدي
-      const updatedChallenge = await storage.updateChallengeStatus(challengeId, 'dismissed');
+      // في جميع الحالات (سواء كان مقترحًا أو نشطًا) نستخدم حالة "dismissed"
+      const newStatus = 'dismissed';
+      const updatedChallenge = await storage.updateChallengeStatus(challengeId, newStatus);
       
-      // إنشاء إشعار بإلغاء التحدي
-      await storage.createNotification({
-        userId,
-        type: 'challenge_cancelled',
-        title: 'تم إلغاء التحدي',
-        message: `لقد قمت بإلغاء تحدي "${challenge.title}".`,
-        data: JSON.stringify({
-          challengeId,
-          title: challenge.title
-        })
-      });
+      // إنشاء إشعار مناسب (إلغاء أو تجاهل)
+      if (challenge.status === 'suggested') {
+        await storage.createNotification({
+          userId,
+          type: 'challenge_dismissed',
+          title: 'تم تجاهل التحدي',
+          message: `لقد قمت بتجاهل تحدي "${challenge.title}".`,
+          data: JSON.stringify({
+            challengeId,
+            title: challenge.title
+          })
+        });
+      } else {
+        await storage.createNotification({
+          userId,
+          type: 'challenge_cancelled',
+          title: 'تم إلغاء التحدي',
+          message: `لقد قمت بإلغاء تحدي "${challenge.title}".`,
+          data: JSON.stringify({
+            challengeId,
+            title: challenge.title
+          })
+        });
+      }
       
       res.status(200).json(updatedChallenge);
     } catch (error: any) {
