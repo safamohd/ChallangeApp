@@ -355,133 +355,205 @@ async function analyzeUserDataForChallenges(userId: number) {
       }
     }
     
-    // إنشاء التحدي الأكثر ملاءمة استنادًا إلى التحليل
+    // التحقق من التحديات الحالية للمستخدم
+    const userChallenges = await storage.getChallenges(userId);
+    const activeOrSuggestedChallengeTypes = userChallenges
+      .filter(c => c.status === 'active' || c.status === 'suggested')
+      .map(c => c.type);
     
-    const challengeSuggestions = [];
+    // إنشاء التحديات المناسبة استنادًا إلى التحليل
+    let challengeCount = 0;
     
     // تحدي تقليل الإنفاق على الفئة الأكثر استهلاكًا
-    if (maxSpendingCategory > 0) {
+    if (maxSpendingCategory > 0 && !activeOrSuggestedChallengeTypes.includes('category_limit')) {
       const category = await storage.getCategoryById(maxSpendingCategory);
       if (category) {
-        challengeSuggestions.push({
-          type: 'category_limit',
+        const challenge = {
+          userId: userId,
           title: `تحدي تقليل الإنفاق على ${category.name}`,
           description: `تجنب الإنفاق على ${category.name} لمدة 10 أيام لتوفير المال.`,
+          type: 'category_limit' as const,
+          status: 'suggested' as const,
+          startDate: new Date(),
+          endDate: new Date(new Date().setDate(new Date().getDate() + 10)),
+          progress: 0,
+          targetValue: maxSpendingAmount * 0.7, // هدف خفض 30٪
+          currentValue: 0,
           metadata: JSON.stringify({
             categoryId: maxSpendingCategory,
             categoryName: category.name,
             duration: 10 // أيام
           })
+        };
+        
+        await storage.createChallenge(challenge);
+        challengeCount++;
+        
+        await createChallengeSuggestionNotification(userId, {
+          title: challenge.title,
+          description: challenge.description,
+          type: challenge.type
         });
       }
     }
     
     // تحدي تقليل الإنفاق على الرفاهيات
-    if (luxuryPercentage > 30) {
-      challengeSuggestions.push({
-        type: 'importance_limit',
+    if (luxuryPercentage > 30 && !activeOrSuggestedChallengeTypes.includes('importance_limit')) {
+      const challenge = {
+        userId: userId,
         title: 'تحدي التوقف عن الرفاهيات',
         description: 'لا مصاريف رفاهية لمدة أسبوع، ركز على الضروريات فقط.',
+        type: 'importance_limit' as const,
+        status: 'suggested' as const,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        progress: 0,
+        targetValue: 0, // لا رفاهيات
+        currentValue: 0,
         metadata: JSON.stringify({
           importance: 'رفاهية',
           duration: 7 // أيام
         })
-      });
-    }
-    
-    // تحدي التركيز على الضروريات
-    if (essentialPercentage < 50) {
-      challengeSuggestions.push({
-        type: 'importance_limit',
-        title: 'تحدي المصاريف الأساسية فقط',
-        description: 'أنفق فقط على العناصر المهمة والأساسية لمدة 7 أيام.',
-        metadata: JSON.stringify({
-          importance: 'مهم',
-          onlyEssentials: true,
-          duration: 7 // أيام
-        })
+      };
+      
+      await storage.createChallenge(challenge);
+      challengeCount++;
+      
+      await createChallengeSuggestionNotification(userId, {
+        title: challenge.title,
+        description: challenge.description,
+        type: challenge.type
       });
     }
     
     // تحدي عدم الإنفاق في نهاية الأسبوع
-    if (weekendPercentage > 35) {
-      challengeSuggestions.push({
-        type: 'time_based',
+    if (weekendPercentage > 35 && !activeOrSuggestedChallengeTypes.includes('time_based')) {
+      const challenge = {
+        userId: userId,
         title: 'لا إنفاق في نهاية الأسبوع',
         description: 'تجنب الإنفاق يومي الجمعة والسبت لأسبوعين.',
+        type: 'time_based' as const,
+        status: 'suggested' as const,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 14)),
+        progress: 0,
+        targetValue: 4, // 4 أيام نهاية أسبوع
+        currentValue: 0,
         metadata: JSON.stringify({
           days: [5, 6], // الجمعة والسبت
           duration: 14 // أيام
         })
+      };
+      
+      await storage.createChallenge(challenge);
+      challengeCount++;
+      
+      await createChallengeSuggestionNotification(userId, {
+        title: challenge.title,
+        description: challenge.description,
+        type: challenge.type
       });
     }
     
     // تحدي تقليل الإنفاق الأسبوعي عند الاقتراب من الميزانية
-    if (budgetPercentage > 75) {
+    if (budgetPercentage > 75 && !activeOrSuggestedChallengeTypes.includes('spending_reduction')) {
       const weeklyAvg = totalSpending / (currentDate.getDate() / 7); // متوسط الإنفاق الأسبوعي
+      const targetAmount = weeklyAvg * 0.7;
       
-      challengeSuggestions.push({
-        type: 'spending_reduction',
+      const challenge = {
+        userId: userId,
         title: 'تحدي التقليل 30%',
-        description: `قم بخفض إنفاقك الأسبوعي بنسبة 30% (إلى ${Math.round(weeklyAvg * 0.7)} ﷼) هذا الأسبوع.`,
+        description: `قم بخفض إنفاقك الأسبوعي بنسبة 30% (إلى ${Math.round(targetAmount)} ﷼) هذا الأسبوع.`,
+        type: 'spending_reduction' as const,
+        status: 'suggested' as const,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        progress: 0,
+        targetValue: targetAmount,
+        currentValue: 0,
         metadata: JSON.stringify({
           targetReduction: 30,
           weeklyAverage: weeklyAvg,
-          targetAmount: weeklyAvg * 0.7,
+          targetAmount: targetAmount,
           duration: 7 // أيام
         })
+      };
+      
+      await storage.createChallenge(challenge);
+      challengeCount++;
+      
+      await createChallengeSuggestionNotification(userId, {
+        title: challenge.title,
+        description: challenge.description,
+        type: challenge.type
       });
     }
     
     // تحدي الادخار
-    if (budgetPercentage < 90) {
+    if (budgetPercentage < 90 && !activeOrSuggestedChallengeTypes.includes('saving_goal')) {
       const savingAmount = Math.round(totalSpending * 0.1); // 10% من الإنفاق الحالي
       
-      challengeSuggestions.push({
-        type: 'saving_goal',
+      const challenge = {
+        userId: userId,
         title: 'تحدي الإدخار الأسبوعي',
         description: `ادخر ${savingAmount} ﷼ هذا الأسبوع من خلال تقليل المصاريف غير الضرورية.`,
+        type: 'saving_goal' as const,
+        status: 'suggested' as const,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        progress: 0,
+        targetValue: savingAmount,
+        currentValue: 0,
         metadata: JSON.stringify({
           targetAmount: savingAmount,
           duration: 7 // أيام
         })
+      };
+      
+      await storage.createChallenge(challenge);
+      challengeCount++;
+      
+      await createChallengeSuggestionNotification(userId, {
+        title: challenge.title,
+        description: challenge.description,
+        type: challenge.type
       });
     }
     
     // تحدي الانتظام في تسجيل المصاريف
-    if (maxGapDays > 3 || expenses.length < 10) {
-      challengeSuggestions.push({
-        type: 'consistency',
+    if ((maxGapDays > 3 || expenses.length < 10) && !activeOrSuggestedChallengeTypes.includes('consistency')) {
+      const challenge = {
+        userId: userId,
         title: 'تحدي تسجيل المصاريف',
         description: 'سجل مصاريفك يوميًا لمدة 7 أيام متتالية.',
+        type: 'consistency' as const,
+        status: 'suggested' as const,
+        startDate: new Date(),
+        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
+        progress: 0,
+        targetValue: 7, // عدد الأيام
+        currentValue: 0,
         metadata: JSON.stringify({
           duration: 7, // أيام
           requiresDaily: true
         })
+      };
+      
+      await storage.createChallenge(challenge);
+      challengeCount++;
+      
+      await createChallengeSuggestionNotification(userId, {
+        title: challenge.title,
+        description: challenge.description,
+        type: challenge.type
       });
     }
     
-    // ترتيب الاقتراحات حسب الأولوية
-    return {
-      challenges: challengeSuggestions,
-      stats: {
-        totalSpending,
-        categorySpending,
-        importanceSpending,
-        luxuryPercentage,
-        normalPercentage,
-        essentialPercentage,
-        weekendSpending,
-        weekdaySpending,
-        weekendPercentage,
-        budgetPercentage,
-        maxGapDays
-      }
-    };
+    return challengeCount;
     
   } catch (error) {
     console.error("Error analyzing user data for challenges:", error);
-    return null;
+    return 0;
   }
 }
 

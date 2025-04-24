@@ -345,36 +345,22 @@ export class DatabaseStorage implements IStorage {
   
   async createChallenge(insertChallenge: InsertChallenge): Promise<Challenge> {
     try {
-      // We need to adapt the data to match the expected types in the database
-      const sql = `
-        INSERT INTO challenges (
-          user_id, title, description, type, status, 
-          start_date, end_date, progress, target_value, 
-          current_value, metadata
-        ) 
-        VALUES (
-          $1, $2, $3, $4::challenge_type, $5::challenge_status, 
-          $6, $7, $8, $9, 
-          $10, $11
-        )
-        RETURNING *
-      `;
+      // استخدام Drizzle ORM مع الأنواع المحددة بشكل صحيح
+      const [challenge] = await db.insert(challenges).values({
+        userId: insertChallenge.userId,
+        title: insertChallenge.title,
+        description: insertChallenge.description,
+        type: insertChallenge.type,
+        status: insertChallenge.status || 'active',
+        startDate: insertChallenge.startDate,
+        endDate: insertChallenge.endDate,
+        progress: insertChallenge.progress || 0,
+        targetValue: insertChallenge.targetValue || null,
+        currentValue: insertChallenge.currentValue || 0,
+        metadata: insertChallenge.metadata || null
+      }).returning();
       
-      const result = await pool.query(sql, [
-        insertChallenge.userId,
-        insertChallenge.title,
-        insertChallenge.description,
-        insertChallenge.type,
-        insertChallenge.status || 'active',
-        insertChallenge.startDate,
-        insertChallenge.endDate,
-        insertChallenge.progress || 0,
-        insertChallenge.targetValue || null,
-        insertChallenge.currentValue || 0,
-        insertChallenge.metadata || null
-      ]);
-      
-      return result.rows[0];
+      return challenge;
     } catch (error) {
       console.error("Error creating challenge:", error);
       throw new Error("Failed to create challenge");
@@ -383,89 +369,22 @@ export class DatabaseStorage implements IStorage {
   
   async updateChallenge(id: number, challengeUpdate: Partial<InsertChallenge>): Promise<Challenge> {
     try {
-      // بناء استعلام SQL ديناميكي بناءً على الحقول المحدثة
-      let setClause = 'updated_at = $1';
-      const params: any[] = [new Date()];
-      let paramIndex = 2;
+      // تحديث البيانات باستخدام Drizzle ORM
+      const updateData: any = {
+        ...challengeUpdate,
+        updatedAt: new Date()
+      };
       
-      // إضافة الحقول التي يتم تحديثها إلى استعلام SQL
-      if (challengeUpdate.title) {
-        setClause += `, title = $${paramIndex}`;
-        params.push(challengeUpdate.title);
-        paramIndex++;
-      }
+      const [updatedChallenge] = await db.update(challenges)
+        .set(updateData)
+        .where(eq(challenges.id, id))
+        .returning();
       
-      if (challengeUpdate.description) {
-        setClause += `, description = $${paramIndex}`;
-        params.push(challengeUpdate.description);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.type) {
-        setClause += `, type = $${paramIndex}::challenge_type`;
-        params.push(challengeUpdate.type);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.status) {
-        setClause += `, status = $${paramIndex}::challenge_status`;
-        params.push(challengeUpdate.status);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.startDate) {
-        setClause += `, start_date = $${paramIndex}`;
-        params.push(challengeUpdate.startDate);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.endDate) {
-        setClause += `, end_date = $${paramIndex}`;
-        params.push(challengeUpdate.endDate);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.progress !== undefined) {
-        setClause += `, progress = $${paramIndex}`;
-        params.push(challengeUpdate.progress);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.targetValue !== undefined) {
-        setClause += `, target_value = $${paramIndex}`;
-        params.push(challengeUpdate.targetValue);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.currentValue !== undefined) {
-        setClause += `, current_value = $${paramIndex}`;
-        params.push(challengeUpdate.currentValue);
-        paramIndex++;
-      }
-      
-      if (challengeUpdate.metadata !== undefined) {
-        setClause += `, metadata = $${paramIndex}`;
-        params.push(challengeUpdate.metadata);
-        paramIndex++;
-      }
-      
-      // إضافة شرط المعرف
-      params.push(id);
-      
-      const sql = `
-        UPDATE challenges
-        SET ${setClause}
-        WHERE id = $${paramIndex}
-        RETURNING *
-      `;
-      
-      const result = await pool.query(sql, params);
-      
-      if (result.rows.length === 0) {
+      if (!updatedChallenge) {
         throw new Error(`Challenge with id ${id} not found`);
       }
       
-      return result.rows[0];
+      return updatedChallenge;
     } catch (error: any) {
       console.error("Error updating challenge:", error);
       throw new Error(`Failed to update challenge: ${error.message}`);
@@ -474,25 +393,20 @@ export class DatabaseStorage implements IStorage {
   
   async updateChallengeStatus(id: number, status: 'active' | 'completed' | 'failed' | 'dismissed'): Promise<Challenge> {
     try {
-      const sql = `
-        UPDATE challenges
-        SET status = $1::challenge_status, updated_at = $2
-        WHERE id = $3
-        RETURNING *
-      `;
+      const [updatedChallenge] = await db.update(challenges)
+        .set({
+          status: status,
+          updatedAt: new Date()
+        })
+        .where(eq(challenges.id, id))
+        .returning();
       
-      const result = await db.execute(sql, [
-        status,
-        new Date(),
-        id
-      ]);
-      
-      if (result.rows.length === 0) {
+      if (!updatedChallenge) {
         throw new Error(`Challenge with id ${id} not found`);
       }
       
-      return result.rows[0];
-    } catch (error) {
+      return updatedChallenge;
+    } catch (error: any) {
       console.error("Error updating challenge status:", error);
       throw new Error(`Failed to update challenge status: ${error.message}`);
     }
@@ -500,35 +414,26 @@ export class DatabaseStorage implements IStorage {
   
   async updateChallengeProgress(id: number, progress: number, currentValue?: number): Promise<Challenge> {
     try {
-      let sql;
-      let params;
+      const updateData: any = {
+        progress,
+        updatedAt: new Date()
+      };
       
       if (currentValue !== undefined) {
-        sql = `
-          UPDATE challenges
-          SET progress = $1, current_value = $2, updated_at = $3
-          WHERE id = $4
-          RETURNING *
-        `;
-        params = [progress, currentValue, new Date(), id];
-      } else {
-        sql = `
-          UPDATE challenges
-          SET progress = $1, updated_at = $2
-          WHERE id = $3
-          RETURNING *
-        `;
-        params = [progress, new Date(), id];
+        updateData.currentValue = currentValue;
       }
       
-      const result = await db.execute(sql, params);
+      const [updatedChallenge] = await db.update(challenges)
+        .set(updateData)
+        .where(eq(challenges.id, id))
+        .returning();
       
-      if (result.rows.length === 0) {
+      if (!updatedChallenge) {
         throw new Error(`Challenge with id ${id} not found`);
       }
       
-      return result.rows[0];
-    } catch (error) {
+      return updatedChallenge;
+    } catch (error: any) {
       console.error("Error updating challenge progress:", error);
       throw new Error(`Failed to update challenge progress: ${error.message}`);
     }
