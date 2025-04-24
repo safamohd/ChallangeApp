@@ -1433,6 +1433,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // حذف إشعار محدد
+  apiRouter.delete("/notifications/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notification = await storage.getNotificationById(id);
+      
+      if (!notification) {
+        return res.status(404).json({ error: "إشعار غير موجود" });
+      }
+      
+      // التحقق من ملكية الإشعار
+      if (notification.userId !== req.user!.id) {
+        return res.status(403).json({ error: "غير مصرح بهذه العملية" });
+      }
+      
+      const success = await storage.deleteNotification(id);
+      if (success) {
+        res.json({ success: true, message: "تم حذف الإشعار بنجاح" });
+      } else {
+        res.status(500).json({ error: "فشل في حذف الإشعار" });
+      }
+    } catch (error: any) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ error: error.message || "حدث خطأ أثناء حذف الإشعار" });
+    }
+  });
+  
   // ================ APIs الخاصة بالتحديات ================
   
   // الحصول على جميع التحديات الخاصة بالمستخدم

@@ -316,6 +316,13 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count || 0;
   }
   
+  async deleteNotification(id: number): Promise<boolean> {
+    await db.delete(notifications).where(eq(notifications.id, id));
+    // التحقق من أن الإشعار لم يعد موجوداً بعد الحذف
+    const notification = await this.getNotificationById(id);
+    return notification === undefined;
+  }
+  
   // Challenge operations
   
   async getChallenges(userId: number): Promise<Challenge[]> {
