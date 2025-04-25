@@ -665,7 +665,7 @@ export default function ChallengesPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
                 {filteredChallenges().map((challenge) => renderChallengeCard(challenge))}
               </div>
             )}

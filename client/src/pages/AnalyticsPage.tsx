@@ -301,14 +301,14 @@ export default function AnalyticsPage() {
         {/* تم إزالة ملخص الإحصائيات العام */}
 
         {/* الرسوم البيانية */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* مخطط الفئات */}
           <Card>
             <CardHeader>
               <CardTitle className="text-center">تصنيف المصروفات</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] flex justify-center items-center mb-4">
+              <div className="h-[300px] flex justify-center items-center mb-4 mx-auto max-w-md">
                 {isLoading ? (
                   <Skeleton className="h-full w-full rounded-lg" />
                 ) : categoryData.length > 0 ? (
@@ -404,7 +404,7 @@ export default function AnalyticsPage() {
               <CardTitle className="text-center">حسب أهمية المصروف</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[350px] flex justify-center items-center mb-4">
+              <div className="h-[350px] flex justify-center items-center mb-4 mx-auto max-w-md">
                 {isLoading ? (
                   <Skeleton className="h-full w-full rounded-lg" />
                 ) : totalExpenses > 0 ? (
