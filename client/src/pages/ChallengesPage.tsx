@@ -274,8 +274,8 @@ export default function ChallengesPage() {
       'importance_limit': 'تحدي أهمية',
       'time_based': 'تحدي زمني',
       'spending_reduction': 'تحدي توفير',
-      'saving_goal': 'هدف ادخار',
       'consistency': 'تحدي انتظام'
+      // تم إزالة 'saving_goal' (هدف ادخار) كما هو مطلوب
     };
     
     return typeMap[type] || type;
@@ -336,8 +336,6 @@ export default function ChallengesPage() {
         return <Calendar className="h-4 w-4 mr-1" />;
       case 'spending_reduction':
         return <DollarSign className="h-4 w-4 mr-1" />;
-      case 'saving_goal':
-        return <Award className="h-4 w-4 mr-1" />;
       case 'consistency':
         return <Activity className="h-4 w-4 mr-1" />;
       default:
@@ -461,7 +459,6 @@ export default function ChallengesPage() {
                   {challenge.type === 'importance_limit' && "يتم فحص مستويات أهمية مصاريفك اليومية وتحديث التقدم تلقائياً. استمر في تجنب المصاريف غير الضرورية لإحراز تقدم."}
                   {challenge.type === 'time_based' && "يتم مراقبة الإنفاق في الأيام المحددة وتحديث التقدم تلقائياً. تجنب الإنفاق في هذه الأيام لإكمال التحدي."}
                   {challenge.type === 'spending_reduction' && "يتم مقارنة إجمالي إنفاقك خلال فترة التحدي بالمتوسط السابق وتحديث التقدم تلقائياً. استمر في تقليل الإنفاق للنجاح."}
-                  {challenge.type === 'saving_goal' && "يتم تتبع مدى التزامك بالتوفير خلال فترة التحدي. المبالغ التي توفرها من خلال تقليل الإنفاق تحتسب تلقائياً."}
                   {challenge.type === 'consistency' && "يتم مراقبة انتظامك في تسجيل المصاريف وتحديث التقدم بناءً على ذلك. استمر في تسجيل مصاريفك يومياً للنجاح."}
                 </AlertDescription>
               </Alert>
