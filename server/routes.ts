@@ -823,55 +823,78 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           recordedDays.add(new Date(expense.date).toISOString().split('T')[0]);
         });
         
-        // حساب الأيام التي مرت من بداية التحدي
-        const daysPassed = new Map<string, boolean>();
+        // حساب الأيام المتتالية التي مرت من بداية التحدي
+        const consecutiveDays: {date: string, hasExpense: boolean}[] = [];
         let currentDate = new Date(startDate);
-        let totalDaysPassed = 0;
         
+        // وضع قائمة بكل يوم من بداية التحدي حتى اليوم أو نهاية التحدي (أيهما أقرب)
         while (currentDate <= (isExpired ? endDate : today)) {
           const dayStr = currentDate.toISOString().split('T')[0];
           const hasExpenseOnDay = recordedDays.has(dayStr);
-          daysPassed.set(dayStr, hasExpenseOnDay);
-          totalDaysPassed++;
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // البحث عن أي يوم مكسور (يوم مر بدون تسجيل مصاريف)
-        const daysWithExpenses = Array.from(daysPassed.entries())
-          .filter(([_, hasExpense]) => hasExpense)
-          .map(([day]) => day);
+          consecutiveDays.push({
+            date: dayStr,
+            hasExpense: hasExpenseOnDay
+          });
           
-        const daysRecorded = daysWithExpenses.length;
-        
-        // للتحديات اليومية - يجب أن يكون التقدم تدريجياً (1/7 في اليوم)
-        let progress = 0;
-        
-        if (requiresDaily) {
-          // الحد الأقصى للأيام هو عدد الأيام المستهدفة أو عدد الأيام المنقضية (أيهما أقل)
-          const maxDaysRequiredSoFar = Math.min(totalDaysPassed, targetDays);
-          // التقدم هو نسبة عدد الأيام المسجلة إلى الحد الأقصى للأيام المطلوبة حتى الآن
-          progress = Math.min(100, (daysRecorded / targetDays) * 100);
-        } else {
-          // للتحديات غير اليومية - يتم حساب التقدم تراكمياً
-          progress = Math.min(100, (daysRecorded / targetDays) * 100);
+          // ننتقل لليوم التالي
+          const nextDate = new Date(currentDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          currentDate = nextDate;
         }
         
-        // شروط إكمال التحدي: 
-        // 1. إذا كان التحدي يتطلب تسجيل المصاريف يوميًا: تم تسجيل مصاريف لـ targetDays يوم متتالي
-        // 2. إذا كان غير يومي: تم تسجيل المصاريف في عدد الأيام المطلوبة على الأقل
-        const completed = daysRecorded >= targetDays;
-        
-        return { 
-          completed,
-          progress,
-          currentValue: daysRecorded
-        };
+        // للتحديات اليومية المتتالية، نتحقق من كل يوم مر بدون انقطاع
+        if (requiresDaily) {
+          // إذا كان هناك أي يوم مكسور (يوم مر بدون تسجيل مصاريف) - فشل التحدي فورًا
+          const missedDay = consecutiveDays.findIndex(day => !day.hasExpense);
+          
+          if (missedDay !== -1) {
+            console.log(`تم العثور على يوم مفقود: ${consecutiveDays[missedDay].date}`);
+            
+            return {
+              completed: false,
+              progress: (missedDay / targetDays) * 100, // التقدم حتى يوم الفشل
+              currentValue: missedDay,
+              failed: true
+            };
+          }
+          
+          // عدد الأيام المسجلة حتى الآن
+          const daysRecorded = consecutiveDays.length;
+          
+          // شرط إكمال التحدي: تسجيل مصاريف في جميع الأيام المطلوبة (targetDays) بدون انقطاع
+          const completed = daysRecorded >= targetDays;
+          
+          // التقدم هو عدد الأيام المنجزة من إجمالي الأيام المطلوبة
+          const progress = Math.min(100, (daysRecorded / targetDays) * 100);
+          
+          return { 
+            completed,
+            progress,
+            currentValue: daysRecorded
+          };
+        } else {
+          // للتحديات غير اليومية - يتم حساب عدد الأيام التي تم تسجيل مصاريف فيها
+          const daysWithExpenses = consecutiveDays.filter(day => day.hasExpense);
+          const daysRecorded = daysWithExpenses.length;
+          
+          // شرط إكمال التحدي: تسجيل مصاريف في عدد كافٍ من الأيام
+          const completed = daysRecorded >= targetDays;
+          
+          // التقدم هو نسبة عدد الأيام المسجلة إلى إجمالي الأيام المطلوبة
+          const progress = Math.min(100, (daysRecorded / targetDays) * 100);
+          
+          return { 
+            completed,
+            progress,
+            currentValue: daysRecorded
+          };
+        }
       }
-
+      
+      // الحالة الافتراضية
       default:
         return { completed: false, progress: 0 };
     }
-    
   } catch (error) {
     console.error("Error checking challenge completion:", error);
     return { completed: false, progress: 0 };
@@ -993,7 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newExpense = await storage.createExpense(validatedData);
       
-      // بعد إضافة المصروف، تحقق مما إذا كان يجب إنشاء إشعارات
+      // بعد إضافة المصروف، تحقق مما إذا كان يجب إنشاء إشعارات وتحديث التحديات
       try {
         // الحصول على معلومات المستخدم للتحقق من الميزانية
         const user = await storage.getUser(userId);
@@ -1026,10 +1049,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await createLuxurySpendingNotification(userId, luxuryAmount, totalAmount);
             await createEssentialDecreaseNotification(userId, essentialAmount, totalAmount);
           }
+          
+          // فحص وتحديث التحدي النشط إذا وجد
+          const activeChallenge = await storage.getActiveChallenge(userId);
+          if (activeChallenge) {
+            console.log(`تحديث تقدم التحدي النشط بعد إضافة مصروف جديد: ${activeChallenge.title}`);
+            
+            // فحص حالة التحدي بعد إضافة المصروف الجديد
+            const completionStatus = await checkChallengeCompletion(activeChallenge, userId);
+            
+            // تحديث حالة وتقدم التحدي
+            if (completionStatus.failed) {
+              console.log("فشل التحدي بسبب مخالفة الشروط", completionStatus);
+              
+              // تحديث حالة التحدي إلى "فاشل"
+              await storage.updateChallengeStatus(activeChallenge.id, 'failed');
+              
+              // إنشاء إشعار بفشل التحدي
+              await storage.createNotification({
+                userId,
+                type: 'challenge_failed',
+                title: 'فشل التحدي',
+                message: `لم تتمكن من إكمال التحدي "${activeChallenge.title}" لأنك خالفت شروطه. حاول مرة أخرى!`,
+                data: JSON.stringify({
+                  challengeId: activeChallenge.id,
+                  title: activeChallenge.title
+                })
+              });
+            } else if (completionStatus.completed) {
+              console.log("تم إكمال التحدي بنجاح", completionStatus);
+              
+              // تحديث حالة التحدي إلى "مكتمل"
+              await storage.updateChallengeStatus(activeChallenge.id, 'completed');
+              
+              // إنشاء إشعار بإكمال التحدي
+              await storage.createNotification({
+                userId,
+                type: 'challenge_completed',
+                title: 'تهانينا! تم إكمال التحدي',
+                message: `لقد أكملت التحدي "${activeChallenge.title}" بنجاح. استمر في تحسين عاداتك المالية!`,
+                data: JSON.stringify({
+                  challengeId: activeChallenge.id,
+                  title: activeChallenge.title
+                })
+              });
+            } else {
+              // تحديث تقدم التحدي
+              await storage.updateChallengeProgress(
+                activeChallenge.id, 
+                completionStatus.progress,
+                completionStatus.currentValue
+              );
+            }
+          }
         }
       } catch (notificationError) {
-        // لا نريد أن تفشل عملية إضافة المصروف إذا فشلت عملية إنشاء الإشعارات
-        console.error("Error creating notifications:", notificationError);
+        // لا نريد أن تفشل عملية إضافة المصروف إذا فشلت عملية إنشاء الإشعارات أو تحديث التحديات
+        console.error("Error creating notifications or updating challenges:", notificationError);
       }
       
       res.status(201).json(newExpense);
