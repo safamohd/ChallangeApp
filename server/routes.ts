@@ -812,8 +812,9 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
       }
       
       case 'consistency': {
-        // تحدي تسجيل المصاريف بانتظام لمدة معينة (كل يوم)
+        // تحدي تسجيل المصاريف بانتظام لمدة معينة (واحد في اليوم)
         const targetDays = metadata.targetDays || 7; // عدد الأيام المستهدفة (افتراضيًا: 7 أيام)
+        const requiresDaily = metadata.requiresDaily === true; // هل يتطلب التحدي تسجيل المصاريف يوميًا؟
         
         // جمع الأيام التي تم تسجيل مصاريف فيها
         const recordedDays = new Set<string>();
@@ -825,26 +826,40 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         // حساب الأيام التي مرت من بداية التحدي
         const daysPassed = new Map<string, boolean>();
         let currentDate = new Date(startDate);
+        let totalDaysPassed = 0;
         
         while (currentDate <= (isExpired ? endDate : today)) {
           const dayStr = currentDate.toISOString().split('T')[0];
-          daysPassed.set(dayStr, recordedDays.has(dayStr));
+          const hasExpenseOnDay = recordedDays.has(dayStr);
+          daysPassed.set(dayStr, hasExpenseOnDay);
+          totalDaysPassed++;
           currentDate.setDate(currentDate.getDate() + 1);
         }
         
         // البحث عن أي يوم مكسور (يوم مر بدون تسجيل مصاريف)
-        const missedDays = Array.from(daysPassed.entries())
-          .filter(([_, hasExpense]) => !hasExpense)
+        const daysWithExpenses = Array.from(daysPassed.entries())
+          .filter(([_, hasExpense]) => hasExpense)
           .map(([day]) => day);
           
-        // تم تسجيل مصاريف في كل يوم مر
-        const daysRecorded = recordedDays.size;
-                
-        // شروط إكمال التحدي: تم تسجيل المصاريف في العدد المطلوب من الأيام أو أكثر
-        const completed = daysRecorded >= targetDays;
+        const daysRecorded = daysWithExpenses.length;
         
-        // حساب التقدم - عدد الأيام المسجلة من العدد المطلوب
-        const progress = Math.min(100, (daysRecorded / targetDays) * 100);
+        // للتحديات اليومية - يجب أن يكون التقدم تدريجياً (1/7 في اليوم)
+        let progress = 0;
+        
+        if (requiresDaily) {
+          // الحد الأقصى للأيام هو عدد الأيام المستهدفة أو عدد الأيام المنقضية (أيهما أقل)
+          const maxDaysRequiredSoFar = Math.min(totalDaysPassed, targetDays);
+          // التقدم هو نسبة عدد الأيام المسجلة إلى الحد الأقصى للأيام المطلوبة حتى الآن
+          progress = Math.min(100, (daysRecorded / targetDays) * 100);
+        } else {
+          // للتحديات غير اليومية - يتم حساب التقدم تراكمياً
+          progress = Math.min(100, (daysRecorded / targetDays) * 100);
+        }
+        
+        // شروط إكمال التحدي: 
+        // 1. إذا كان التحدي يتطلب تسجيل المصاريف يوميًا: تم تسجيل مصاريف لـ targetDays يوم متتالي
+        // 2. إذا كان غير يومي: تم تسجيل المصاريف في عدد الأيام المطلوبة على الأقل
+        const completed = daysRecorded >= targetDays;
         
         return { 
           completed,
