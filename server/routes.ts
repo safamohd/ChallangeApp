@@ -844,24 +844,37 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         
         // للتحديات اليومية المتتالية، نتحقق من كل يوم مر بدون انقطاع
         if (requiresDaily) {
-          // إذا كان هناك أي يوم مكسور (يوم مر بدون تسجيل مصاريف) - فشل التحدي فورًا
-          const missedDay = consecutiveDays.findIndex(day => !day.hasExpense);
+          // اليوم الحالي بالنسبة لبداية التحدي (0 = اليوم الأول، 1 = اليوم الثاني، إلخ)
+          const challengeDayNumber = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
           
-          if (missedDay !== -1) {
-            console.log(`تم العثور على يوم مفقود: ${consecutiveDays[missedDay].date}`);
+          console.log(`عدد أيام التحدي المنقضية: ${challengeDayNumber}`);
+          console.log(`أيام التسجيل: `, Array.from(recordedDays));
+          
+          // عدم فحص الأيام المفقودة في اليوم الأول من التحدي (إعطاء فرصة 24 ساعة للتسجيل)
+          if (challengeDayNumber > 0) {
+            // نتحقق فقط من الأيام التي انتهت (باستثناء اليوم الحالي)
+            const pastDays = consecutiveDays.slice(0, -1);
             
-            return {
-              completed: false,
-              progress: (missedDay / targetDays) * 100, // التقدم حتى يوم الفشل
-              currentValue: missedDay,
-              failed: true
-            };
+            // البحث عن أول يوم مفقود (يوم مضى بدون تسجيل مصاريف)
+            const missedDay = pastDays.findIndex(day => !day.hasExpense);
+            
+            if (missedDay !== -1) {
+              console.log(`تم العثور على يوم مفقود: ${pastDays[missedDay].date}`);
+              
+              return {
+                completed: false,
+                progress: (missedDay / targetDays) * 100, // التقدم حتى يوم الفشل
+                currentValue: missedDay,
+                failed: true
+              };
+            }
           }
           
-          // عدد الأيام المسجلة حتى الآن
-          const daysRecorded = consecutiveDays.length;
+          // حساب عدد الأيام التي تم تسجيل مصاريف فيها
+          const daysWithExpenses = consecutiveDays.filter(day => day.hasExpense);
+          const daysRecorded = daysWithExpenses.length;
           
-          // شرط إكمال التحدي: تسجيل مصاريف في جميع الأيام المطلوبة (targetDays) بدون انقطاع
+          // شرط إكمال التحدي: تسجيل مصاريف في العدد المطلوب من الأيام (targetDays) بدون انقطاع
           const completed = daysRecorded >= targetDays;
           
           // التقدم هو عدد الأيام المنجزة من إجمالي الأيام المطلوبة
@@ -1875,7 +1888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       const challengeId = parseInt(req.params.id);
-      const { progress, currentValue } = req.body;
+      const { forceCheck } = req.body; // اختياري: لإعادة فحص حالة التحدي حتى لو لم يتم إضافة مصاريف جديدة
       
       // التحقق من وجود التحدي وملكيته
       const challenge = await storage.getChallengeById(challengeId);
@@ -1896,19 +1909,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // تحديث تقدم التحدي
+      console.log(`تحديث تقدم التحدي (طلب تحديث يدوي): ${challenge.title} (ID: ${challengeId})`);
+      
+      // استخدام وظيفة التحقق من إكمال التحدي لتقييم التقدم الحالي
+      const completionStatus = await checkChallengeCompletion(challenge, userId);
       let updatedChallenge;
       
-      if (progress !== undefined && currentValue !== undefined) {
-        updatedChallenge = await storage.updateChallengeProgress(challengeId, progress, currentValue);
-      } else if (progress !== undefined) {
-        updatedChallenge = await storage.updateChallengeProgress(challengeId, progress);
-      } else {
-        return res.status(400).json({ error: 'يجب توفير قيمة progress على الأقل' });
-      }
-      
-      // تحديث حالة التحدي إذا اكتمل
-      if (progress >= 100) {
+      // تحديث حالة وتقدم التحدي بناءً على نتيجة الفحص
+      if (completionStatus.failed) {
+        console.log("فشل التحدي بسبب مخالفة الشروط", completionStatus);
+        
+        // تحديث حالة التحدي إلى "فاشل"
+        updatedChallenge = await storage.updateChallengeStatus(challengeId, 'failed');
+        
+        // إنشاء إشعار بفشل التحدي
+        await storage.createNotification({
+          userId,
+          type: 'challenge_failed',
+          title: 'فشل التحدي',
+          message: `لم تتمكن من إكمال التحدي "${challenge.title}" لأنك خالفت شروطه. حاول مرة أخرى!`,
+          data: JSON.stringify({
+            challengeId,
+            title: challenge.title
+          })
+        });
+      } else if (completionStatus.completed) {
+        console.log("تم إكمال التحدي بنجاح", completionStatus);
+        
+        // تحديث حالة التحدي إلى "مكتمل"
         updatedChallenge = await storage.updateChallengeStatus(challengeId, 'completed');
         
         // إنشاء إشعار بإكمال التحدي
@@ -1916,12 +1944,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId,
           type: 'challenge_completed',
           title: 'تهانينا! تم إكمال التحدي',
-          message: `لقد أكملت "${challenge.title}" بنجاح. استمر في التقدم!`,
+          message: `لقد أكملت التحدي "${challenge.title}" بنجاح. استمر في تحسين عاداتك المالية!`,
           data: JSON.stringify({
             challengeId,
             title: challenge.title
           })
         });
+      } else {
+        // تحديث تقدم التحدي فقط
+        updatedChallenge = await storage.updateChallengeProgress(
+          challengeId, 
+          completionStatus.progress,
+          completionStatus.currentValue
+        );
       }
       
       res.status(200).json(updatedChallenge);
