@@ -489,36 +489,7 @@ async function analyzeUserDataForChallenges(userId: number) {
       });
     }
     
-    // تحدي الادخار
-    if (budgetPercentage < 90 && !activeOrSuggestedChallengeTypes.includes('saving_goal')) {
-      const savingAmount = Math.round(totalSpending * 0.1); // 10% من الإنفاق الحالي
-      
-      const challenge = {
-        userId: userId,
-        title: 'تحدي الإدخار الأسبوعي',
-        description: `ادخر ${savingAmount} ﷼ هذا الأسبوع من خلال تقليل المصاريف غير الضرورية.`,
-        type: 'saving_goal' as const,
-        status: 'suggested' as const,
-        startDate: new Date(),
-        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-        progress: 0,
-        targetValue: savingAmount,
-        currentValue: 0,
-        metadata: JSON.stringify({
-          targetAmount: savingAmount,
-          duration: 7 // أيام
-        })
-      };
-      
-      await storage.createChallenge(challenge);
-      challengeCount++;
-      
-      await createChallengeSuggestionNotification(userId, {
-        title: challenge.title,
-        description: challenge.description,
-        type: challenge.type
-      });
-    }
+    // تم إزالة تحدي الادخار (saving_goal) بناءً على المتطلبات
     
     // تحدي الانتظام في تسجيل المصاريف
     if ((maxGapDays > 3 || expenses.length < 10) && !activeOrSuggestedChallengeTypes.includes('consistency')) {
@@ -1535,25 +1506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'لا يوجد تحدي نشط حاليًا' });
       }
       
-      // التحقق من نوع التحدي - نحن لا نتيح تحديات الادخار بعد الآن
-      if (challenge.type === 'saving_goal') {
-        // إلغاء التحدي إذا كان من نوع الادخار
-        await storage.updateChallengeStatus(challenge.id, 'dismissed');
-        
-        // إنشاء إشعار بإلغاء التحدي
-        await storage.createNotification({
-          userId,
-          type: 'challenge_cancelled',
-          title: 'تم إلغاء تحدي الادخار',
-          message: `تم إلغاء تحدي "${challenge.title}" لأننا لا ندعم تحديات الادخار حالياً.`,
-          data: JSON.stringify({
-            challengeId: challenge.id,
-            title: challenge.title
-          })
-        });
-        
-        return res.status(404).json({ message: 'لا يوجد تحدي نشط حاليًا' });
-      }
+      // ملاحظة: تم إزالة التحقق من نوع التحدي "saving_goal" لأنه لم يعد موجودًا في السكيما
       
       // التحقق من حالة التحدي وتحديث التقدم
       const completionStatus = await checkChallengeCompletion(challenge, userId);
