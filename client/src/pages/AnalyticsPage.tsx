@@ -377,7 +377,7 @@ export default function AnalyticsPage() {
               
               {/* ملخص مخطط الفئات */}
               {!isLoading && categoryData.length > 0 && (
-                <div className="text-sm border-t pt-3 text-center">
+                <div className="text-sm border-t pt-3 text-center max-w-lg mx-auto">
                   <p className="font-medium">
                     الفئة الأعلى إنفاقاً هي: <span className="text-primary">{categoryData[0].name}</span> 
                     <span className="text-primary font-bold mr-1">({(categoryData[0].value / totalExpenses * 100).toFixed(0)}٪)</span>
@@ -461,7 +461,7 @@ export default function AnalyticsPage() {
               
               {/* ملخص مخطط الأهمية */}
               {!isLoading && totalExpenses > 0 && (
-                <div className="text-sm border-t pt-3 text-center">
+                <div className="text-sm border-t pt-3 text-center max-w-lg mx-auto">
                   {(() => {
                     // العثور على الفئة ذات أعلى قيمة
                     const maxImportance = importanceData.reduce((prev, current) => 
@@ -521,7 +521,7 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex justify-center items-center mb-4">
+            <div className="h-[300px] flex justify-center items-center mb-4 mx-auto max-w-3xl">
               {isLoading ? (
                 <Skeleton className="h-full w-full rounded-lg" />
               ) : timeSeriesData.length > 0 ? (
@@ -593,7 +593,7 @@ export default function AnalyticsPage() {
             
             {/* ملخص أيام الذروة */}
             {!isLoading && peakDays.length > 0 && (
-              <div className="text-sm border-t pt-3 text-center">
+              <div className="text-sm border-t pt-3 text-center max-w-lg mx-auto">
                 <p className="font-medium">
                   ذروة الإنفاق كانت في الأيام/الفترات التالية:
                 </p>
