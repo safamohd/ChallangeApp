@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -129,7 +130,7 @@ export default function AuthPage() {
                         control={loginForm.control}
                         name="email"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>البريد الإلكتروني</FormLabel>
                             <FormControl>
                               <Input
@@ -137,6 +138,8 @@ export default function AuthPage() {
                                 placeholder="أدخل البريد الإلكتروني"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -148,7 +151,7 @@ export default function AuthPage() {
                         control={loginForm.control}
                         name="password"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>كلمة المرور</FormLabel>
                             <FormControl>
                               <Input
@@ -156,6 +159,8 @@ export default function AuthPage() {
                                 placeholder="أدخل كلمة المرور"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -190,13 +195,15 @@ export default function AuthPage() {
                         control={registerForm.control}
                         name="username"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>اسم المستخدم</FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="أدخل اسم المستخدم"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -208,7 +215,7 @@ export default function AuthPage() {
                         control={registerForm.control}
                         name="email"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>البريد الإلكتروني</FormLabel>
                             <FormControl>
                               <Input
@@ -216,6 +223,8 @@ export default function AuthPage() {
                                 placeholder="أدخل البريد الإلكتروني"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -227,7 +236,7 @@ export default function AuthPage() {
                         control={registerForm.control}
                         name="password"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>كلمة المرور</FormLabel>
                             <FormControl>
                               <Input
@@ -235,6 +244,8 @@ export default function AuthPage() {
                                 placeholder="أدخل كلمة المرور"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -246,7 +257,7 @@ export default function AuthPage() {
                         control={registerForm.control}
                         name="confirmPassword"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>تأكيد كلمة المرور</FormLabel>
                             <FormControl>
                               <Input
@@ -254,6 +265,8 @@ export default function AuthPage() {
                                 placeholder="أعد إدخال كلمة المرور"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
@@ -265,7 +278,7 @@ export default function AuthPage() {
                         control={registerForm.control}
                         name="monthlyBudget"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="text-right">
                             <FormLabel>الميزانية الشهرية (اختياري)</FormLabel>
                             <FormControl>
                               <Input
@@ -273,6 +286,8 @@ export default function AuthPage() {
                                 placeholder="أدخل ميزانيتك الشهرية"
                                 {...field}
                                 disabled={isLoading}
+                                className="text-right"
+                                dir="rtl"
                               />
                             </FormControl>
                             <FormMessage />
