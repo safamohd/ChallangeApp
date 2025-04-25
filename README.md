@@ -106,6 +106,8 @@
 
 ### اضغط على الصورة للانتقال الى الفيديو
 
-[![مشاهدة فيديو التطبيق](https://github.com/user-attachments/assets/fd2baea5-1779-4322-b6d5-0b6d99a46602)](https://github.com/user-attachments/assets/fd2baea5-1779-4322-b6d5-0b6d99a46602)
+
+
+[![مشاهدة فيديو التطبيق](https://github.com/user-attachments/assets/fd2baea5-1779-4322-b6d5-0b6d99a46602)](https://youtu.be/k6HPFwyBT10?si=hO9wTJ6ZdVm_wgAk)
 
 
