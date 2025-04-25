@@ -16,7 +16,7 @@ import Layout from "@/components/Layout";
 import { Pencil, Save, X } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -196,15 +196,23 @@ export default function ProfilePage() {
         
         <Card>
           <CardHeader>
-            <CardTitle className="text-right">معلومات الحساب</CardTitle>
+            <CardTitle className="text-right">تسجيل الخروج</CardTitle>
             <CardDescription className="text-right">
-              معلومات أساسية عن حسابك
+              إدارة جلسة تسجيل الدخول الخاصة بك
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between border-b pb-2">
-              <span className="font-medium">اسم المستخدم</span>
-              <span>{user?.username || ""}</span>
+            <div className="flex justify-center">
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (confirm("هل أنت متأكد من تسجيل الخروج؟")) {
+                    logoutMutation.mutate();
+                  }
+                }}
+              >
+                تسجيل الخروج
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { useNotifications } from '@/hooks/use-notifications';
 
 interface MobileNavigationProps {
   onAddClick: () => void;
@@ -8,11 +7,11 @@ interface MobileNavigationProps {
 
 export default function MobileNavigation({ onAddClick }: MobileNavigationProps) {
   const [location, setLocation] = useLocation();
-  const { unreadCount } = useNotifications();
 
   return (
     <div className="sm:hidden fixed bottom-0 right-0 left-0 bg-white border-t border-slate-200 z-10">
       <div className="flex justify-around py-3">
+        {/* الرئيسية */}
         <button 
           className={`flex flex-col items-center ${location === '/' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
           onClick={() => setLocation('/')}
@@ -21,6 +20,7 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
           <span className="text-xs mt-1">الرئيسية</span>
         </button>
         
+        {/* المصاريف */}
         <button 
           className={`flex flex-col items-center ${location === '/expenses' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
           onClick={() => setLocation('/expenses')}
@@ -29,6 +29,7 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
           <span className="text-xs mt-1">المصاريف</span>
         </button>
         
+        {/* إضافة */}
         <button 
           className="flex flex-col items-center text-primary"
           onClick={onAddClick}
@@ -37,14 +38,7 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
           <span className="text-xs mt-1">إضافة</span>
         </button>
         
-        <button 
-          className={`flex flex-col items-center ${location === '/challenges' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/challenges')}
-        >
-          <i className="fas fa-trophy text-lg"></i>
-          <span className="text-xs mt-1">التحديات</span>
-        </button>
-        
+        {/* تحليلات */}
         <button 
           className={`flex flex-col items-center ${location === '/analytics' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
           onClick={() => setLocation('/analytics')}
@@ -53,12 +47,13 @@ export default function MobileNavigation({ onAddClick }: MobileNavigationProps) 
           <span className="text-xs mt-1">تحليلات</span>
         </button>
         
+        {/* التحديات */}
         <button 
-          className={`flex flex-col items-center ${location === '/profile' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
-          onClick={() => setLocation('/profile')}
+          className={`flex flex-col items-center ${location === '/challenges' ? 'text-primary' : 'text-slate-500 hover:text-primary'}`}
+          onClick={() => setLocation('/challenges')}
         >
-          <i className="fas fa-user text-lg"></i>
-          <span className="text-xs mt-1">الملف</span>
+          <i className="fas fa-trophy text-lg"></i>
+          <span className="text-xs mt-1">التحديات</span>
         </button>
       </div>
     </div>
