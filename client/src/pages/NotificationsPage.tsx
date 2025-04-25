@@ -25,6 +25,16 @@ export default function NotificationsPage() {
         return "تحليل أسبوعي";
       case 'expense_trend':
         return "اتجاه الإنفاق";
+      case 'challenge_started':
+        return "بدء تحدي";
+      case 'challenge_completed':
+        return "إكمال تحدي";
+      case 'challenge_failed':
+        return "فشل تحدي";
+      case 'challenge_cancelled':
+        return "إلغاء تحدي";
+      case 'challenge_suggested':
+        return "اقتراح تحدي";
       default:
         return "إشعار";
     }
@@ -45,6 +55,16 @@ export default function NotificationsPage() {
         return "#3B82F6"; // أزرق
       case 'expense_trend':
         return "#EC4899"; // وردي
+      case 'challenge_started':
+        return "#3B82F6"; // أزرق
+      case 'challenge_completed':
+        return "#10B981"; // أخضر
+      case 'challenge_failed':
+        return "#EF4444"; // أحمر
+      case 'challenge_cancelled':
+        return "#6B7280"; // رمادي
+      case 'challenge_suggested':
+        return "#8B5CF6"; // بنفسجي
       default:
         return "#6B7280"; // رمادي
     }
@@ -65,6 +85,12 @@ export default function NotificationsPage() {
         return "📊";
       case 'expense_trend':
         return "📈";
+      case 'challenge_started':
+      case 'challenge_completed':
+      case 'challenge_failed':
+      case 'challenge_cancelled':
+      case 'challenge_suggested':
+        return "🏆";
       default:
         return "📣";
     }
@@ -77,6 +103,62 @@ export default function NotificationsPage() {
       new Date(),
       { addSuffix: true, locale: ar }
     );
+  };
+
+  // التحقق مما إذا كان الإشعار متعلق بالتحديات
+  const isChallengeNotification = (type: string): boolean => {
+    return type.includes('challenge');
+  };
+
+  // عرض البيانات الإضافية للإشعار
+  const renderAdditionalData = (data: string, type: string) => {
+    try {
+      const parsedData = JSON.parse(data) as Record<string, unknown>;
+      
+      // استخدام قائمة بدون نقاط للتحديات، وقائمة مع نقاط للإشعارات الأخرى
+      const useBulletPoints = !isChallengeNotification(type);
+      
+      return (
+        <ul className={useBulletPoints ? "list-disc list-inside space-y-1" : "space-y-1"}>
+          {Object.entries(parsedData).map(([key, value]) => {
+            // تجاهل المفاتيح التي تحتوي على كلمة "percentage" للتنسيق الخاص
+            if (key.includes('percentage')) return null;
+            
+            // عرض النسب المئوية بتنسيق خاص
+            const percentKey = Object.keys(parsedData).find(k => 
+              k.includes('percentage') && k.startsWith(key)
+            );
+            
+            let displayValue = String(value);
+            if (key === 'currentAmount' || key === 'overspending' || key === 'amount') {
+              displayValue = `${displayValue} ﷼`;
+            }
+            
+            return (
+              <li key={key}>
+                {key === 'startDate' ? 'الفترة: ' : 
+                 key === 'endDate' ? 'إلى: ' :
+                 key === 'currentSpending' ? 'المصروفات الحالية: ' :
+                 key === 'monthlyBudget' ? 'الميزانية الشهرية: ' :
+                 key === 'overspending' ? 'تجاوز الميزانية: ' :
+                 key === 'trendType' ? 'نوع الاتجاه: ' :
+                 key === 'category' ? 'الفئة: ' :
+                 key === 'luxurySpending' ? 'الإنفاق على الرفاهيات: ' :
+                 key === 'essentialSpending' ? 'الإنفاق على الأساسيات: ' :
+                 key === 'totalSpending' ? 'إجمالي الإنفاق: ' :
+                 ''}
+                {displayValue}
+                {percentKey && typeof parsedData[percentKey] === 'number' ? 
+                  ` (${Math.round(parsedData[percentKey] as number)}%)` : 
+                  ''}
+              </li>
+            );
+          })}
+        </ul>
+      );
+    } catch {
+      return <p>{data}</p>;
+    }
   };
 
   if (isLoading) {
@@ -169,51 +251,7 @@ export default function NotificationsPage() {
                       {/* عرض بيانات إضافية إذا كانت متوفرة */}
                       {notification.data && (
                         <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
-                          {(() => {
-                            try {
-                              const parsedData = JSON.parse(notification.data) as Record<string, unknown>;
-                              return (
-                                <ul className="list-disc list-inside space-y-1">
-                                  {Object.entries(parsedData).map(([key, value]) => {
-                                    // تجاهل المفاتيح التي تحتوي على كلمة "percentage" للتنسيق الخاص
-                                    if (key.includes('percentage')) return null;
-                                    
-                                    // عرض النسب المئوية بتنسيق خاص
-                                    const percentKey = Object.keys(parsedData).find(k => 
-                                      k.includes('percentage') && k.startsWith(key)
-                                    );
-                                    
-                                    let displayValue = String(value);
-                                    if (key === 'currentAmount' || key === 'overspending' || key === 'amount') {
-                                      displayValue = `${displayValue} ﷼`;
-                                    }
-                                    
-                                    return (
-                                      <li key={key}>
-                                        {key === 'startDate' ? 'الفترة: ' : 
-                                         key === 'endDate' ? 'إلى: ' :
-                                         key === 'currentSpending' ? 'المصروفات الحالية: ' :
-                                         key === 'monthlyBudget' ? 'الميزانية الشهرية: ' :
-                                         key === 'overspending' ? 'تجاوز الميزانية: ' :
-                                         key === 'trendType' ? 'نوع الاتجاه: ' :
-                                         key === 'category' ? 'الفئة: ' :
-                                         key === 'luxurySpending' ? 'الإنفاق على الرفاهيات: ' :
-                                         key === 'essentialSpending' ? 'الإنفاق على الأساسيات: ' :
-                                         key === 'totalSpending' ? 'إجمالي الإنفاق: ' :
-                                         ''}
-                                        {displayValue}
-                                        {percentKey && typeof parsedData[percentKey] === 'number' ? 
-                                          ` (${Math.round(parsedData[percentKey] as number)}%)` : 
-                                          ''}
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              );
-                            } catch {
-                              return <p>{notification.data}</p>;
-                            }
-                          })()}
+                          {renderAdditionalData(notification.data, notification.type)}
                         </div>
                       )}
                     </div>
