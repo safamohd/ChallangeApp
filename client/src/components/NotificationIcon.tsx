@@ -13,9 +13,14 @@ import { Separator } from "@/components/ui/separator";
 import { ar } from "date-fns/locale";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 // مكون عنصر إشعار واحد
-const NotificationItem = ({ notification, onRead }: { notification: Notification; onRead: (id: number) => void }) => {
+const NotificationItem = ({ notification, onRead, onNavigate }: { 
+  notification: Notification; 
+  onRead: (id: number) => void;
+  onNavigate: () => void;
+}) => {
   const getIconByType = (type: string) => {
     switch (type) {
       case 'spending_limit_warning':
@@ -30,6 +35,12 @@ const NotificationItem = ({ notification, onRead }: { notification: Notification
         return "📊";
       case 'expense_trend':
         return "📈";
+      case 'challenge_started':
+      case 'challenge_completed':
+      case 'challenge_failed':
+      case 'challenge_cancelled':
+      case 'challenge_suggested':
+        return "🏆";
       default:
         return "📣";
     }
@@ -42,10 +53,16 @@ const NotificationItem = ({ notification, onRead }: { notification: Notification
     { addSuffix: true, locale: ar }
   );
 
+  const handleClick = () => {
+    // وضع علامة على الإشعار كمقروء ثم الانتقال إلى صفحة الإشعارات
+    onRead(notification.id);
+    onNavigate();
+  };
+
   return (
     <div 
       className={`p-3 border-b cursor-pointer hover:bg-muted transition-colors ${!notification.isRead ? 'bg-muted/50' : ''}`}
-      onClick={() => onRead(notification.id)}
+      onClick={handleClick}
     >
       <div className="flex items-start gap-2">
         <div className="text-xl">{getIconByType(notification.type)}</div>
@@ -69,10 +86,17 @@ const NotificationItem = ({ notification, onRead }: { notification: Notification
 // مكون أيقونة الإشعارات
 export default function NotificationIcon() {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
 
   const handleReadNotification = (id: number) => {
     markAsRead(id);
+  };
+
+  // الانتقال إلى صفحة الإشعارات وإغلاق القائمة المنسدلة
+  const navigateToNotifications = () => {
+    setOpen(false); // إغلاق القائمة المنسدلة
+    setLocation("/notifications"); // الانتقال إلى صفحة الإشعارات
   };
 
   return (
@@ -93,16 +117,26 @@ export default function NotificationIcon() {
       <PopoverContent className="w-[350px] p-0" align="end">
         <div className="p-3 border-b flex justify-between items-center">
           <h3 className="font-medium text-lg">الإشعارات</h3>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-8"
+                onClick={() => markAllAsRead()}
+              >
+                تعيين الكل كمقروء
+              </Button>
+            )}
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm" 
               className="text-xs h-8"
-              onClick={() => markAllAsRead()}
+              onClick={navigateToNotifications}
             >
-              تعيين الكل كمقروء
+              عرض الكل
             </Button>
-          )}
+          </div>
         </div>
         <ScrollArea className="h-[400px]">
           {isLoading ? (
@@ -114,7 +148,8 @@ export default function NotificationIcon() {
               <NotificationItem 
                 key={notification.id} 
                 notification={notification} 
-                onRead={handleReadNotification} 
+                onRead={handleReadNotification}
+                onNavigate={navigateToNotifications} 
               />
             ))
           ) : (
