@@ -816,6 +816,15 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         const targetDays = metadata.targetDays || 7; // عدد الأيام المستهدفة (افتراضيًا: 7 أيام)
         const requiresDaily = metadata.requiresDaily === true; // هل يتطلب التحدي تسجيل المصاريف يوميًا؟
         
+        // حساب الفرق بالساعات بين وقت البدء والوقت الحالي
+        const startTimeMs = new Date(startDate).getTime();
+        const currentTimeMs = today.getTime();
+        const hoursSinceStart = Math.floor((currentTimeMs - startTimeMs) / (1000 * 60 * 60));
+        const daysSinceStart = Math.floor(hoursSinceStart / 24);
+        
+        console.log(`ساعات منذ بدء التحدي: ${hoursSinceStart}`);
+        console.log(`أيام منذ بدء التحدي: ${daysSinceStart}`);
+        
         // جمع الأيام التي تم تسجيل مصاريف فيها
         const recordedDays = new Set<string>();
         
@@ -823,15 +832,25 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           recordedDays.add(new Date(expense.date).toISOString().split('T')[0]);
         });
         
-        // حساب الأيام المتتالية التي مرت من بداية التحدي
-        const consecutiveDays: {date: string, hasExpense: boolean}[] = [];
-        let currentDate = new Date(startDate);
+        console.log(`أيام التسجيل: `, Array.from(recordedDays));
         
-        // وضع قائمة بكل يوم من بداية التحدي حتى اليوم أو نهاية التحدي (أيهما أقرب)
-        while (currentDate <= (isExpired ? endDate : today)) {
+        // حساب الأيام المنقضية التي يجب فحصها
+        // نحن نعتبر أن اليوم منقضي فقط إذا مر عليه 24 ساعة كاملة
+        const completeDays: {date: string, hasExpense: boolean}[] = [];
+        const todayOnly: {date: string, hasExpense: boolean} = {
+          date: today.toISOString().split('T')[0],
+          hasExpense: recordedDays.has(today.toISOString().split('T')[0])
+        };
+        
+        // حساب الأيام المنقضية بالكامل (تجاهل اليوم الحالي)
+        let currentDate = new Date(startDate);
+        const yesterdayEnd = new Date(today);
+        yesterdayEnd.setHours(0, 0, 0, 0); // بداية اليوم الحالي
+
+        while (currentDate < yesterdayEnd) {
           const dayStr = currentDate.toISOString().split('T')[0];
           const hasExpenseOnDay = recordedDays.has(dayStr);
-          consecutiveDays.push({
+          completeDays.push({
             date: dayStr,
             hasExpense: hasExpenseOnDay
           });
@@ -842,64 +861,73 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           currentDate = nextDate;
         }
         
-        // للتحديات اليومية المتتالية، نتحقق من كل يوم مر بدون انقطاع
+        console.log("الأيام المنقضية بالكامل:", completeDays.length);
+        completeDays.forEach(day => console.log(`- ${day.date}: ${day.hasExpense ? "تم التسجيل" : "لم يتم التسجيل"}`));
+        
+        // للتحديات اليومية المتتالية
         if (requiresDaily) {
-          // اليوم الحالي بالنسبة لبداية التحدي (0 = اليوم الأول، 1 = اليوم الثاني، إلخ)
-          const challengeDayNumber = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          console.log(`عدد أيام التحدي المنقضية: ${challengeDayNumber}`);
-          console.log(`أيام التسجيل: `, Array.from(recordedDays));
-          
-          // عدم فحص الأيام المفقودة في اليوم الأول من التحدي (إعطاء فرصة 24 ساعة للتسجيل)
-          if (challengeDayNumber > 0) {
-            // نتحقق فقط من الأيام التي انتهت (باستثناء اليوم الحالي)
-            const pastDays = consecutiveDays.slice(0, -1);
+          // إذا لم يمض أي يوم كامل (لا يزال في أول 24 ساعة)، لا نقوم بالفحص بعد
+          if (completeDays.length === 0) {
+            console.log("لم يمض يوم كامل بعد، لا يتم فحص الفشل");
             
-            // البحث عن أول يوم مفقود (يوم مضى بدون تسجيل مصاريف)
-            const missedDay = pastDays.findIndex(day => !day.hasExpense);
+            // نقوم بحساب التقدم بناءً على ما إذا كان هناك مصروف في اليوم الحالي
+            const progress = todayOnly.hasExpense ? Math.min(100, (1 / targetDays) * 100) : 0;
             
-            if (missedDay !== -1) {
-              console.log(`تم العثور على يوم مفقود: ${pastDays[missedDay].date}`);
-              
-              return {
-                completed: false,
-                progress: (missedDay / targetDays) * 100, // التقدم حتى يوم الفشل
-                currentValue: missedDay,
-                failed: true
-              };
-            }
+            return {
+              completed: false, // لا يزال مبكرًا للإكمال
+              progress,
+              currentValue: todayOnly.hasExpense ? 1 : 0
+            };
           }
           
-          // حساب عدد الأيام التي تم تسجيل مصاريف فيها
-          const daysWithExpenses = consecutiveDays.filter(day => day.hasExpense);
-          const daysRecorded = daysWithExpenses.length;
+          // فحص الأيام المنقضية للبحث عن أي يوم فائت
+          const missedDay = completeDays.findIndex(day => !day.hasExpense);
+          
+          if (missedDay !== -1) {
+            console.log(`تم العثور على يوم مفقود: ${completeDays[missedDay].date}`);
+            
+            return {
+              completed: false,
+              progress: (missedDay / targetDays) * 100, // التقدم حتى يوم الفشل
+              currentValue: missedDay,
+              failed: true
+            };
+          }
+          
+          // إذا لم نجد أي يوم مفقود، نحسب عدد الأيام المسجلة (بما في ذلك اليوم الحالي إذا كان مسجلاً)
+          const completedDaysCount = completeDays.length;
+          const currentDayHasExpense = todayOnly.hasExpense;
+          
+          // عدد الأيام التي تم تسجيل مصاريف فيها بنجاح
+          const successfulDays = completedDaysCount + (currentDayHasExpense ? 1 : 0);
           
           // شرط إكمال التحدي: تسجيل مصاريف في العدد المطلوب من الأيام (targetDays) بدون انقطاع
-          const completed = daysRecorded >= targetDays;
+          const completed = successfulDays >= targetDays;
           
           // التقدم هو عدد الأيام المنجزة من إجمالي الأيام المطلوبة
-          const progress = Math.min(100, (daysRecorded / targetDays) * 100);
+          const progress = Math.min(100, (successfulDays / targetDays) * 100);
           
           return { 
             completed,
             progress,
-            currentValue: daysRecorded
+            currentValue: successfulDays
           };
         } else {
           // للتحديات غير اليومية - يتم حساب عدد الأيام التي تم تسجيل مصاريف فيها
-          const daysWithExpenses = consecutiveDays.filter(day => day.hasExpense);
-          const daysRecorded = daysWithExpenses.length;
+          // حساب عدد الأيام المنقضية والحالية التي تم تسجيل مصاريف فيها
+          const allDaysWithExpenses = Array.from(recordedDays);
+          const daysWithExpensesCount = allDaysWithExpenses.length;
           
           // شرط إكمال التحدي: تسجيل مصاريف في عدد كافٍ من الأيام
-          const completed = daysRecorded >= targetDays;
+          const completed = daysWithExpensesCount >= targetDays;
           
           // التقدم هو نسبة عدد الأيام المسجلة إلى إجمالي الأيام المطلوبة
-          const progress = Math.min(100, (daysRecorded / targetDays) * 100);
+          const progress = Math.min(100, (daysWithExpensesCount / targetDays) * 100);
           
           return { 
             completed,
             progress,
-            currentValue: daysRecorded
+            currentValue: daysWithExpensesCount
           };
         }
       }
