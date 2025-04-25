@@ -24,8 +24,8 @@ export const challengeTypeEnum = pgEnum('challenge_type', [
   'importance_limit',   // تحديات الحد من الإنفاق حسب الأهمية
   'time_based',         // تحديات مرتبطة بالوقت (مثل عدم الإنفاق في عطلة نهاية الأسبوع)
   'spending_reduction', // تحديات تقليل الإنفاق العام
-  'saving_goal',        // تحديات الادخار
   'consistency'         // تحديات الانتظام في تسجيل المصاريف
+  // تم إزالة نوع 'saving_goal' (تحديات الادخار) بناءً على المتطلبات
 ]);
 
 // إنشاء حالات التحديات
@@ -241,7 +241,7 @@ export const insertChallengeSchema = z.object({
   userId: z.number(),
   title: z.string(),
   description: z.string(),
-  type: z.enum(['category_limit', 'importance_limit', 'time_based', 'spending_reduction', 'saving_goal', 'consistency']),
+  type: z.enum(['category_limit', 'importance_limit', 'time_based', 'spending_reduction', 'consistency']),
   status: z.enum(['suggested', 'active', 'completed', 'failed', 'dismissed']).default('active'),
   startDate: z.union([z.date(), z.string().transform(str => new Date(str))]).default(() => new Date()),
   endDate: z.union([z.date(), z.string().transform(str => new Date(str))]),

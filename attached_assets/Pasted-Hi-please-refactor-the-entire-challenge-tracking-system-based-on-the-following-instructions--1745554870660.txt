@@ -1,0 +1,75 @@
+Hi, please refactor the entire challenge tracking system based on the following instructions.
+
+---
+
+## ❌ REMOVE `saving_goal` CHALLENGE TYPE
+
+- The `saving_goal` type of challenges (e.g., “Save 200 SAR in 7 days”) should be **completely removed from the system**.
+- This includes:
+  - The model
+  - Backend logic
+  - UI appearance in suggestions, active, or completed sections
+
+---
+
+## ✅ General Rules for All Remaining Challenges
+
+- A challenge should only progress if the user completes the **daily condition**.
+- Do **not mark challenges as 100% on day one**.
+- When a challenge is started:
+  - It must be **removed from the Suggestions section immediately**.
+- When the user completes all required days:
+  - Automatically **move the challenge to the Completed section**.
+- If the user fails the challenge (breaks a condition):
+  - **Remove it from Active Challenges immediately**.
+
+---
+
+## 1️⃣ `consistency`  
+Example: "Track Spending Daily for 7 Days"
+
+- User must log at least **1 expense per day** for 7 days.
+- Each day with a valid expense = 1 step of progress.
+- If user skips a day:
+  - The challenge should either fail or pause (depending on your system design).
+
+---
+
+## 2️⃣ `category_limit`  
+Example: "Avoid spending on Restaurants for 7 days"
+
+- User must avoid adding expenses in the target category.
+- Each 24-hour period without spending in that category = 1 day of progress.
+- Spending in the restricted category = **fail the challenge immediately**.
+
+---
+
+## 3️⃣ `importance_limit`  
+Example: "Spend only on essentials for 7 days"
+
+- User can only spend in categories marked as essential.
+- Each day with only essential expenses = 1 progress point.
+- Any luxury/non-essential expense = **fail immediately**.
+
+---
+
+## 4️⃣ `time_based`  
+Example: "No Spending on Fridays and Saturdays for 2 weeks"
+
+- If the user does **not spend on restricted days**, progress by 1 day.
+- If user spends on any restricted day (e.g., Friday or Saturday), **fail immediately**.
+- System must detect real date and compare it with restricted days.
+
+---
+
+## 5️⃣ `spending_reduction`  
+Example: "Spend 30% less than weekly average"
+
+- Calculate user’s average weekly spending.
+- During the challenge, track total spending.
+- If user stays under target (e.g., 70% of average), mark as complete at end.
+- If user exceeds limit, mark as failed.
+
+---
+
+Please remove `saving_goal` type entirely, and re-implement the remaining challenge types with accurate daily progress logic, fail conditions, and automatic status updates

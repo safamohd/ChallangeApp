@@ -590,11 +590,25 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
     // تحديد ما إذا كان التحدي قد انتهى
     const isExpired = today > endDate;
     
+    // حساب مدة التحدي بالأيام
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
     // جلب مصاريف الفترة
     const allExpenses = await storage.getExpenses(userId);
     const challengePeriodExpenses = allExpenses.filter(expense => {
       const expenseDate = new Date(expense.date);
       return expenseDate >= startDate && expenseDate <= (isExpired ? endDate : today);
+    });
+    
+    // استخراج أيام المصاريف الفريدة
+    const dayExpenseMap = new Map<string, number[]>();
+    
+    challengePeriodExpenses.forEach(expense => {
+      const dateStr = new Date(expense.date).toISOString().split('T')[0];
+      if (!dayExpenseMap.has(dateStr)) {
+        dayExpenseMap.set(dateStr, []);
+      }
+      dayExpenseMap.get(dateStr)!.push(expense.id);
     });
     
     // تحليل التقدم استنادًا إلى نوع التحدي
@@ -603,7 +617,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         // تحدي الحد من الإنفاق على فئة معينة
         const categoryId = metadata.categoryId;
         
-        // التحقق من عدم الإنفاق على هذه الفئة
+        // التحقق من عدم الإنفاق على هذه الفئة - أي مصروف من هذه الفئة يؤدي إلى فشل التحدي فوراً
         const categoryExpenses = challengePeriodExpenses.filter(e => e.categoryId === categoryId);
         
         // شروط الفشل: وجود أي مصروف في الفئة المحددة
@@ -615,15 +629,25 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
             failed: true
           };
         }
-
-        // حساب الأيام التي مرت بدون إنفاق على هذه الفئة
-        const startDay = Math.floor(startDate.getTime() / (1000 * 60 * 60 * 24));
-        const todayDay = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const daysWithoutSpending = Math.min(todayDay - startDay + 1, totalDays);
         
-        // حساب التقدم
-        const progress = Math.min(100, (daysWithoutSpending / totalDays) * 100);
+        // حساب عدد الأيام التي مرت بنجاح (بدون إنفاق على الفئة المحظورة)
+        let successDays = 0;
+        
+        // تقسيم الأيام إلى فترات 24 ساعة من بداية التحدي
+        let currentDate = new Date(startDate);
+        while (currentDate <= (isExpired ? endDate : today)) {
+          const nextDate = new Date(currentDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          // نجتاز يوم واحد إذا لم يكن هناك إنفاق على الفئة المحظورة
+          const dayStr = currentDate.toISOString().split('T')[0];
+          successDays++;
+          
+          currentDate = nextDate;
+        }
+        
+        // التقدم يعتمد على عدد الأيام الناجحة من إجمالي أيام التحدي
+        const progress = Math.min(100, (successDays / totalDays) * 100);
         
         // شروط إكمال التحدي: انتهاء المدة بدون إنفاق على الفئة المحددة
         const completed = isExpired && categoryExpenses.length === 0;
@@ -631,7 +655,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         return { 
           completed,
           progress, 
-          currentValue: 0
+          currentValue: successDays
         };
       }
       
@@ -654,14 +678,23 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
             };
           }
           
-          // حساب الأيام التي مرت بدون إنفاق غير ضروري
-          const startDay = Math.floor(startDate.getTime() / (1000 * 60 * 60 * 24));
-          const todayDay = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          const daysWithoutSpending = Math.min(todayDay - startDay + 1, totalDays);
+          // حساب عدد الأيام التي مرت بنجاح (فقط مصاريف ضرورية أو لا مصاريف)
+          let successDays = 0;
           
-          // حساب التقدم
-          const progress = Math.min(100, (daysWithoutSpending / totalDays) * 100);
+          // تقسيم الأيام إلى فترات 24 ساعة من بداية التحدي
+          let currentDate = new Date(startDate);
+          while (currentDate <= (isExpired ? endDate : today)) {
+            const nextDate = new Date(currentDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            
+            // نجتاز يوم واحد بنجاح
+            successDays++;
+            
+            currentDate = nextDate;
+          }
+          
+          // التقدم يعتمد على عدد الأيام الناجحة من إجمالي أيام التحدي
+          const progress = Math.min(100, (successDays / totalDays) * 100);
           
           // شروط إكمال التحدي: انتهاء المدة بدون إنفاق غير ضروري
           const completed = isExpired && nonEssentialExpenses.length === 0;
@@ -669,7 +702,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           return { 
             completed,
             progress,
-            currentValue: 0
+            currentValue: successDays
           };
         } else {
           // تحدي تجنب الإنفاق على فئة معينة من الأهمية
@@ -685,14 +718,23 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
             };
           }
           
-          // حساب الأيام التي مرت بدون إنفاق على فئة الأهمية المحددة
-          const startDay = Math.floor(startDate.getTime() / (1000 * 60 * 60 * 24));
-          const todayDay = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          const daysWithoutSpending = Math.min(todayDay - startDay + 1, totalDays);
+          // حساب عدد الأيام التي مرت بنجاح
+          let successDays = 0;
           
-          // حساب التقدم
-          const progress = Math.min(100, (daysWithoutSpending / totalDays) * 100);
+          // تقسيم الأيام إلى فترات 24 ساعة من بداية التحدي
+          let currentDate = new Date(startDate);
+          while (currentDate <= (isExpired ? endDate : today)) {
+            const nextDate = new Date(currentDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            
+            // نجتاز يوم واحد
+            successDays++;
+            
+            currentDate = nextDate;
+          }
+          
+          // التقدم يعتمد على عدد الأيام الناجحة من إجمالي أيام التحدي
+          const progress = Math.min(100, (successDays / totalDays) * 100);
           
           // شروط إكمال التحدي: انتهاء المدة بدون إنفاق على فئة الأهمية المحددة
           const completed = isExpired && importanceExpenses.length === 0;
@@ -700,7 +742,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           return { 
             completed,
             progress,
-            currentValue: 0
+            currentValue: successDays
           };
         }
       }
@@ -709,7 +751,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         // تحدي عدم الإنفاق في أيام محددة (نهاية الأسبوع: الجمعة = 5، السبت = 6)
         const restrictedDays = metadata.days || [5, 6]; // الأيام المحظورة (افتراضيًا: نهاية الأسبوع)
         
-        // التحقق من عدم الإنفاق في الأيام المحددة
+        // التحقق من كل مصروف للتحقق من أنه لم يتم في يوم محظور
         const violatingExpenses = challengePeriodExpenses.filter(e => {
           const expenseDay = new Date(e.date).getDay();
           return restrictedDays.includes(expenseDay);
@@ -725,7 +767,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           };
         }
         
-        // حساب عدد الأيام المحظورة التي مرت
+        // حساب عدد الأيام المحظورة التي مرت بنجاح (بدون إنفاق)
         const restrictedDaysPassed = [];
         let currentDate = new Date(startDate);
         while (currentDate <= (isExpired ? endDate : today)) {
@@ -735,7 +777,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           currentDate.setDate(currentDate.getDate() + 1);
         }
         
-        // حساب عدد الأيام المحظورة الكلي خلال التحدي
+        // حساب إجمالي عدد الأيام المحظورة في فترة التحدي
         let totalRestrictedDays = 0;
         currentDate = new Date(startDate);
         while (currentDate <= endDate) {
@@ -745,7 +787,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           currentDate.setDate(currentDate.getDate() + 1);
         }
         
-        // حساب التقدم
+        // التقدم يعتمد على عدد الأيام المحظورة التي تم اجتيازها بنجاح
         const progress = totalRestrictedDays > 0 ? 
           Math.min(100, (restrictedDaysPassed.length / totalRestrictedDays) * 100) : 0;
         
@@ -755,7 +797,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         return { 
           completed,
           progress,
-          currentValue: 0
+          currentValue: restrictedDaysPassed.length
         };
       }
       
@@ -768,48 +810,70 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
         // حساب إجمالي الإنفاق خلال فترة التحدي
         const totalSpent = challengePeriodExpenses.reduce((sum, e) => sum + e.amount, 0);
         
+        // شروط الفشل: تجاوز المبلغ المستهدف
+        const failed = targetAmount > 0 && totalSpent > targetAmount;
+        
         // شروط إكمال التحدي: انتهاء المدة والإنفاق أقل من أو يساوي المبلغ المستهدف
         const completed = isExpired && totalSpent <= targetAmount;
         
         // حساب التقدم
         let progress = 0;
         if (totalSpent <= targetAmount) {
+          // إذا تم الوصول للهدف المنشود
           progress = 100;
-        } else if (weeklyAverage > 0) {
-          const reduction = Math.max(0, weeklyAverage - totalSpent);
-          progress = Math.min(100, (reduction / (weeklyAverage - targetAmount)) * 100);
+        } else if (weeklyAverage > 0 && targetAmount > 0) {
+          // قياس التقدم بناءً على المسافة بين المتوسط الأسبوعي والمبلغ المستهدف
+          const maxAmount = weeklyAverage;
+          const reduction = Math.max(0, maxAmount - totalSpent);
+          progress = Math.min(100, (reduction / (maxAmount - targetAmount)) * 100);
+        } else {
+          // إذا لم تتوفر معلومات كافية، نستخدم التقدم بناءً على المدة
+          const daysPassed = Math.min(Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)), totalDays);
+          progress = Math.min(100, (daysPassed / totalDays) * 100);
         }
         
         return { 
           completed, 
           progress, 
-          currentValue: totalSpent
+          currentValue: totalSpent,
+          failed
         };
       }
       
       case 'consistency': {
-        // تحدي تسجيل المصاريف بانتظام لمدة معينة
+        // تحدي تسجيل المصاريف بانتظام لمدة معينة (كل يوم)
         const targetDays = metadata.targetDays || 7; // عدد الأيام المستهدفة (افتراضيًا: 7 أيام)
         
-        // تحليل أيام التسجيل - كل يوم فريد تم تسجيل مصروف فيه
-        const recordedDays = new Set();
-        challengePeriodExpenses.forEach(e => {
-          recordedDays.add(new Date(e.date).toISOString().split('T')[0]);
+        // جمع الأيام التي تم تسجيل مصاريف فيها
+        const recordedDays = new Set<string>();
+        
+        challengePeriodExpenses.forEach(expense => {
+          recordedDays.add(new Date(expense.date).toISOString().split('T')[0]);
         });
         
-        // عدد الأيام المسجلة
+        // حساب الأيام التي مرت من بداية التحدي
+        const daysPassed = new Map<string, boolean>();
+        let currentDate = new Date(startDate);
+        
+        while (currentDate <= (isExpired ? endDate : today)) {
+          const dayStr = currentDate.toISOString().split('T')[0];
+          daysPassed.set(dayStr, recordedDays.has(dayStr));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // البحث عن أي يوم مكسور (يوم مر بدون تسجيل مصاريف)
+        const missedDays = Array.from(daysPassed.entries())
+          .filter(([_, hasExpense]) => !hasExpense)
+          .map(([day]) => day);
+          
+        // تم تسجيل مصاريف في كل يوم مر
         const daysRecorded = recordedDays.size;
-        
-        // حساب عدد الأيام التي مرت منذ بدء التحدي
-        const startDay = Math.floor(startDate.getTime() / (1000 * 60 * 60 * 24));
-        const todayDay = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-        const daysPassed = Math.min(todayDay - startDay + 1, targetDays);
-        
-        // حساب التقدم - عدد الأيام التي تم تسجيل مصاريف فيها كنسبة من العدد المستهدف
-        const progress = Math.min(100, (daysRecorded / targetDays) * 100);
-        
-        // شروط إكمال التحدي: تم تسجيل مصاريف في عدد الأيام المستهدف أو أكثر
+                
+        // شروط إكمال التحدي: تم تسجيل المصاريف في العدد المطلوب من الأيام أو أكثر
         const completed = daysRecorded >= targetDays;
+        
+        // حساب التقدم - عدد الأيام المسجلة من العدد المطلوب
+        const progress = Math.min(100, (daysRecorded / targetDays) * 100);
         
         return { 
           completed,
@@ -817,33 +881,7 @@ async function checkChallengeCompletion(challenge: Challenge, userId: number): P
           currentValue: daysRecorded
         };
       }
-      
-      case 'saving_goal': {
-        // تحدي وضع مبلغ معين كتوفير
-        const targetAmount = metadata.targetAmount || 0;
-        
-        // الافتراض: استخدام تقدم معتمد على الوقت، سيتم تحديثه يدويًا من قبل المستخدم
-        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const elapsedDays = Math.min(totalDays, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-        const timeBasedProgress = (elapsedDays / totalDays) * 100;
-        
-        // استخدام قيمة التقدم الحالية من التحدي
-        const currentValue = challenge.currentValue || 0;
-        const amountBasedProgress = Math.min(100, (currentValue / targetAmount) * 100);
-        
-        // استخدام التقدم المبني على المبلغ إذا كان متاحًا، وإلا استخدام التقدم المبني على الوقت
-        const progress = currentValue > 0 ? amountBasedProgress : timeBasedProgress;
-        
-        // شروط إكمال التحدي: تم توفير المبلغ المستهدف
-        const completed = currentValue >= targetAmount;
-        
-        return { 
-          completed,
-          progress: Math.min(100, progress),
-          currentValue
-        };
-      }
-      
+
       default:
         return { completed: false, progress: 0 };
     }
@@ -1494,6 +1532,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const challenge = await storage.getActiveChallenge(userId);
       
       if (!challenge) {
+        return res.status(404).json({ message: 'لا يوجد تحدي نشط حاليًا' });
+      }
+      
+      // التحقق من نوع التحدي - نحن لا نتيح تحديات الادخار بعد الآن
+      if (challenge.type === 'saving_goal') {
+        // إلغاء التحدي إذا كان من نوع الادخار
+        await storage.updateChallengeStatus(challenge.id, 'dismissed');
+        
+        // إنشاء إشعار بإلغاء التحدي
+        await storage.createNotification({
+          userId,
+          type: 'challenge_cancelled',
+          title: 'تم إلغاء تحدي الادخار',
+          message: `تم إلغاء تحدي "${challenge.title}" لأننا لا ندعم تحديات الادخار حالياً.`,
+          data: JSON.stringify({
+            challengeId: challenge.id,
+            title: challenge.title
+          })
+        });
+        
         return res.status(404).json({ message: 'لا يوجد تحدي نشط حاليًا' });
       }
       
