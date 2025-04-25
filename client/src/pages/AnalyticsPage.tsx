@@ -122,8 +122,12 @@ export default function AnalyticsPage() {
       name: category.name,
       value: total,
       color: category.color,
+      id: category.id,
     };
-  }).filter(item => item.value > 0);
+  })
+  .filter(item => item.value > 0)
+  // ترتيب البيانات تنازليًا حسب القيمة
+  .sort((a, b) => b.value - a.value);
 
   // إجمالي المصاريف
   const totalExpenses = expenses.reduce(

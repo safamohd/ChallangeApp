@@ -1,0 +1,55 @@
+Hi, I need a few important fixes and logic improvements in both the **analytics section** and the **challenge system**. Here's a detailed breakdown:
+
+---
+
+## 🧠 [1] Analytics - Spending Category Analysis Text Bug
+
+- In the analytics screen under **"Spending by Category"**, the **graph correctly shows the most spent category** (e.g., "Shopping"), but the **text below the graph always shows "Restaurants"** as the most spent category.
+- ✅ Please fix the logic so that the **text matches the actual category with the highest spending** based on real user data.
+
+---
+
+## 🔄 [2] Challenge System - Logic Updates
+
+### [A] General Challenge Flow Fixes:
+
+1. **When a challenge is started**:
+   - It must be **removed from the suggestions list immediately**.
+   - It should **not show 100% progress on the first day** unless the full challenge is actually completed.
+
+---
+
+### [B] Consistency Challenge (e.g., "Track Spending for 7 Days")
+
+**Expected logic:**
+
+- Once the user **starts the challenge**, and **adds a new expense**, that should complete **Day 1 out of 7** (not 100% of the challenge).
+- The challenge should progress **incrementally (1/7 per day)**.
+- Once 7 days are completed, **move it to the "Completed Challenges" section automatically**.
+- If the user **skips a day and doesn't add any expenses**, the challenge should **not progress**, but it should also **not fail unless there's a break in consistency rules (if applied)**.
+
+---
+
+### [C] Category Limit Challenges (e.g., "Avoid Spending on Restaurants")
+
+**Expected logic:**
+
+- When a category challenge starts, **progress should be 0%**.
+- Only after **24 hours pass without spending** in the restricted category (e.g., "Restaurants"), **mark 1 day as complete**.
+- Progress should increase **daily**, only if the user **does not spend in the restricted category during that 24h**.
+- If the user **spends in that category anytime**, the challenge must **fail immediately and be removed** from the active challenges list.
+
+---
+
+### [D] Time-Based Challenge (e.g., "No Spending on Weekend")
+
+**Expected logic:**
+
+- Challenge should track **only Friday and Saturday**.
+- For example: if it's a 2-week challenge, it should **check only 4 days in total** (2x Friday + 2x Saturday).
+- If the user **spends during any of those restricted days**, the challenge should **fail immediately and be removed from active challenges**.
+- Progress should be updated **only after the day ends** and no spending occurred on that specific day.
+
+---
+
+Please make these logic changes in the challenge system. The goal is to make challenges behave in a realistic and rewarding way for the user, based on their actual expense behavior over time.
