@@ -113,13 +113,15 @@ export default function NotificationsPage() {
   // عرض البيانات الإضافية للإشعار
   const renderAdditionalData = (data: string, type: string) => {
     try {
+      // إذا كان الإشعار متعلق بالتحديات، لا نعرض أي بيانات إضافية
+      if (isChallengeNotification(type)) {
+        return null;
+      }
+      
       const parsedData = JSON.parse(data) as Record<string, unknown>;
-      
-      // استخدام قائمة بدون نقاط للتحديات، وقائمة مع نقاط للإشعارات الأخرى
-      const useBulletPoints = !isChallengeNotification(type);
-      
+            
       return (
-        <ul className={useBulletPoints ? "list-disc list-inside space-y-1" : "space-y-1"}>
+        <ul className="list-disc list-inside space-y-1">
           {Object.entries(parsedData).map(([key, value]) => {
             // تجاهل المفاتيح التي تحتوي على كلمة "percentage" للتنسيق الخاص
             if (key.includes('percentage')) return null;
@@ -157,7 +159,8 @@ export default function NotificationsPage() {
         </ul>
       );
     } catch {
-      return <p>{data}</p>;
+      // عدم عرض أي شيء إذا كان هناك خطأ في تحليل البيانات
+      return isChallengeNotification(type) ? null : <p>{data}</p>;
     }
   };
 
@@ -248,8 +251,8 @@ export default function NotificationsPage() {
                     <div className="flex-1">
                       <p className="text-sm">{notification.message}</p>
                       
-                      {/* عرض بيانات إضافية إذا كانت متوفرة */}
-                      {notification.data && (
+                      {/* عرض بيانات إضافية إذا كانت متوفرة ولم يكن الإشعار متعلق بالتحديات */}
+                      {notification.data && !isChallengeNotification(notification.type) && (
                         <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
                           {renderAdditionalData(notification.data, notification.type)}
                         </div>
